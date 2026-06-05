@@ -13,3 +13,6 @@ tools/data-export/schema.json
 
 # 交接文件(只給接手的視窗看,不進 github)
 HANDOFF-交接.md
+
+# 打包輸出
+dist/
