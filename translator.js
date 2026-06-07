@@ -14,8 +14,22 @@
 
   // 不進入翻譯的標籤(避免動到輸入框、程式碼、PoB 代碼等)
   const SKIP_TAGS = new Set(['INPUT', 'TEXTAREA', 'SCRIPT', 'STYLE', 'CODE', 'PRE', 'SELECT', 'OPTION']);
-  // 不進入翻譯的 class(本擴充自己注入的元素;翻譯-only 版目前不注入任何 UI,留空以備擴充)
-  const SKIP_CLASS = [];
+  // 不進入翻譯的 class(本擴充自己注入的元素,如中英切換按鈕)
+  const SKIP_CLASS = ['pob-zh-toggle'];
+
+  // 中英切換狀態:true = 顯示中文(預設);false = 還原英文。
+  let enabled = true;
+  // 已被翻譯而需在「還原英文」時復原的節點:
+  //   touchedText 存文字節點(其原文記在 node.__pobOrig)
+  //   touchedEls  存被整列換掉 textContent 的容器(其原始 HTML 記在 el.__pobOrigHTML)
+  const touchedText = new Set();
+  const touchedEls = new Set();
+  // 設定文字節點值:首次先保存原文,供日後切回英文還原。
+  function setNodeValue(node, val) {
+    if (node.__pobOrig === undefined) node.__pobOrig = node.nodeValue;
+    node.nodeValue = val;
+    touchedText.add(node);
+  }
 
   let uiMap = null;          // 小寫標籤 -> 中文
   let nameMap = null;        // 精確英文名 -> 中文
@@ -147,7 +161,14 @@
       const values = {};
       ts.order.forEach((o, k) => {
         let v = mt[k + 1];
-        if (o.isText) v = (nameMap && nameMap.get(v)) || v; // 技能名英→中(找不到保留英文)
+        // 文字佔位符可能是:① 技能/天賦名(nameMap)② 內層詞綴(珠寶巢狀詞綴,如
+        //「Notable Passive Skills in Radius also grant 1% increased maximum Mana」的內層
+        //「1% increased maximum Mana」→ 遞迴翻譯)③ UI 詞(uiMap);都找不到才保留原文。
+        if (o.isText) {
+          v = (nameMap && nameMap.get(v)) ||
+              translateLine(v.replace(/\s+/g, ' ').trim()) ||
+              (uiMap && uiMap.get(v.toLowerCase())) || v;
+        }
         values[o.idx] = v;
       });
       const zh = ts.zh.replace(/\{(\d+)\}/g, (_, idx) => (idx in values ? values[idx] : '{' + idx + '}'));
@@ -186,8 +207,13 @@
     return translateTextStat(line);
   }
 
+  // poe.ninja 在附魔/工藝等詞綴前會殘留顯示標記(如「{enchant}Allocates …」)。
+  // 這些是顯示用標籤、非遊戲 stat 內文 → 比對前剝除,讓詞綴模板能正常命中。
+  const ENCHANT_TAG_RE = /^\{(?:enchant|crafted|fractured|scourge|veiled|implicit|explicit|rune|corrupted|enchanted)\}\s*/i;
+
   // 整行翻譯:① 整句描述精確比對 ② 詞綴模板 ③「前綴: 詞綴」(符文)
   function translateLine(norm) {
+    norm = norm.replace(ENCHANT_TAG_RE, '');
     if (descMap) {
       const d = descMap.get(norm);
       if (d) return d;
@@ -235,21 +261,21 @@
     // 1) UI 標籤:整個節點精確比對(大小寫無關)
     const ui = uiMap.get(trimmed.toLowerCase());
     if (ui) {
-      node.nodeValue = raw.replace(trimmed, ui);
+      setNodeValue(node, raw.replace(trimmed, ui));
       return true;
     }
 
     // 2) 名稱:整個節點精確比對
     const exact = nameMap.get(trimmed);
     if (exact) {
-      node.nodeValue = raw.replace(trimmed, exact);
+      setNodeValue(node, raw.replace(trimmed, exact));
       return true;
     }
 
     // 3) 詞綴/數據敘述/整句描述:整行比對
     const line = translateLine(trimmed.replace(/\s+/g, ' '));
     if (line) {
-      node.nodeValue = raw.replace(trimmed, line);
+      setNodeValue(node, raw.replace(trimmed, line));
       return true;
     }
 
@@ -273,14 +299,18 @@
         let rest = '';
         if (restRaw) {
           rest = translateAttrAbbr(restRaw);
-          // rest 內可能含名稱(如「賦予技能: 等級 18 Herald of Ash」的技能名)→ 一併翻譯
-          if (multiWordRegex) {
+          // 值整段恰為 UI 詞(如珠寶範圍 Radius: Small→範圍：小、Variable→可變的)→ 直接換
+          const restUi = uiMap.get(rest.trim().toLowerCase());
+          if (restUi) {
+            rest = restUi;
+          } else if (multiWordRegex) {
+            // rest 內可能含名稱(如「賦予技能: 等級 18 Herald of Ash」的技能名)→ 一併翻譯
             multiWordRegex.lastIndex = 0;
             rest = rest.replace(multiWordRegex, (m) => multiWordLookup.get(m.toLowerCase()) || m);
           }
         }
         const out = restRaw ? labelZh + '：' + rest : labelZh + cm[2];
-        node.nodeValue = raw.replace(trimmed, out);
+        setNodeValue(node, raw.replace(trimmed, out));
         return true;
       }
     }
@@ -289,7 +319,7 @@
     if (/\d\s+(?:Str|Dex|Int)\b/i.test(trimmed)) {
       const out = translateAttrAbbr(trimmed);
       if (out !== trimmed) {
-        node.nodeValue = raw.replace(trimmed, out);
+        setNodeValue(node, raw.replace(trimmed, out));
         return true;
       }
     }
@@ -299,7 +329,7 @@
       multiWordRegex.lastIndex = 0;
       if (multiWordRegex.test(trimmed)) {
         multiWordRegex.lastIndex = 0;
-        node.nodeValue = raw.replace(multiWordRegex, (m) => multiWordLookup.get(m.toLowerCase()) || m);
+        setNodeValue(node, raw.replace(multiWordRegex, (m) => multiWordLookup.get(m.toLowerCase()) || m));
         return true;
       }
     }
@@ -343,14 +373,18 @@
       if (!norm || !/[A-Za-z]/.test(norm)) continue;
       const zh = translateLine(norm);
       if (zh) {
+        if (el.__pobOrigHTML === undefined) el.__pobOrigHTML = el.innerHTML; // 供切回英文還原
         el.textContent = zh;     // 整行換成中文(關鍵字 span 一併清掉，不再中英混雜)
         el.__pobTx = true;
+        touchedEls.add(el);
       }
     }
   }
 
   function walk(root) {
     if (!uiMap) return;
+    ensureButton();
+    if (!enabled) return; // 英文模式:不翻譯(按鈕仍保留)
     statLinePass(root);
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
@@ -430,8 +464,77 @@
     return { dict, ui, stats };
   }
 
+  // ---- 中英切換按鈕 ----
+  const PREF_KEY = 'pobShowZh';
+  function persistPref(v) {
+    try { chrome.storage.local.set({ [PREF_KEY]: v }); } catch (_) { /* ignore */ }
+    try { localStorage.setItem(PREF_KEY, v ? '1' : '0'); } catch (_) { /* ignore */ }
+  }
+  async function loadPref() {
+    try {
+      const r = await chrome.storage.local.get(PREF_KEY);
+      if (r && typeof r[PREF_KEY] === 'boolean') return r[PREF_KEY];
+    } catch (_) { /* ignore */ }
+    try {
+      const l = localStorage.getItem(PREF_KEY);
+      if (l !== null) return l === '1';
+    } catch (_) { /* ignore */ }
+    return true; // 預設顯示中文
+  }
+
+  let toggleBtn = null;
+  function updateButton() {
+    if (!toggleBtn) return;
+    toggleBtn.textContent = enabled ? 'EN' : '中';
+    toggleBtn.title = enabled ? '切換為英文(顯示原文)' : '切換為中文';
+  }
+  function ensureButton() {
+    if (!document.body) return;
+    if (toggleBtn && toggleBtn.isConnected) return;
+    if (!toggleBtn) {
+      toggleBtn = document.createElement('div');
+      toggleBtn.className = 'pob-zh-toggle';
+      toggleBtn.setAttribute('role', 'button');
+      toggleBtn.style.cssText = [
+        'position:fixed', 'right:16px', 'bottom:16px', 'z-index:2147483647',
+        'min-width:40px', 'height:40px', 'padding:0 12px', 'box-sizing:border-box',
+        'display:flex', 'align-items:center', 'justify-content:center',
+        'font:600 15px/1 system-ui,sans-serif', 'color:#fff', 'cursor:pointer',
+        'background:#b8860b', 'border:1px solid #e0c060', 'border-radius:20px',
+        'box-shadow:0 2px 8px rgba(0,0,0,.5)', 'user-select:none', 'opacity:0.9',
+      ].join(';');
+      toggleBtn.addEventListener('mouseenter', () => { toggleBtn.style.opacity = '1'; });
+      toggleBtn.addEventListener('mouseleave', () => { toggleBtn.style.opacity = '0.9'; });
+      toggleBtn.addEventListener('click', onToggle);
+      updateButton();
+    }
+    document.body.appendChild(toggleBtn);
+  }
+
+  // 切回英文:把所有翻譯過的節點還原成原文。
+  function restoreEnglish() {
+    for (const n of touchedText) {
+      if (n.__pobOrig !== undefined) n.nodeValue = n.__pobOrig;
+      processed.delete(n); // 之後切回中文時可重新翻譯
+    }
+    for (const el of touchedEls) {
+      if (el.__pobOrigHTML !== undefined) { el.innerHTML = el.__pobOrigHTML; el.__pobTx = false; }
+    }
+    touchedText.clear();
+    touchedEls.clear();
+  }
+
+  function onToggle() {
+    enabled = !enabled;
+    persistPref(enabled);
+    updateButton();
+    if (enabled) walk(document.body); // 切回中文:重新翻譯整頁
+    else restoreEnglish();            // 切到英文:還原原文
+  }
+
   async function init() {
     try {
+      enabled = await loadPref();
       const { dict, ui, stats } = await loadDicts();
       buildIndexes(dict, ui, stats);
       walk(document.body);

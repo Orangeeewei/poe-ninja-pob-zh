@@ -227,8 +227,51 @@ async function main() {
       if (!arr.some((e) => e.en === enC)) { arr.push({ en: enC, zh: zhC }); n++; }
     }
     console.log(`ClientStrings(藥劑/護符模板): +${n}`);
+
+    // 珠寶巢狀詞綴(範圍內賦予/天賦配置):{0} 是「內層詞綴」或「天賦名」(文字佔位符),
+    // 官方來源在 ClientStrings(ModStatJewelAddToNotable/Small)。依 Id 動態抓 → 進 textAcc,
+    // 執行期把 {0} 遞迴翻譯(內層詞綴)或查 nameMap(天賦名)。
+    const JEWEL_NESTED_IDS = new Set(['ModStatJewelAddToNotable', 'ModStatJewelAddToSmall']);
+    let jn = 0;
+    for (let i = 0; i < csEn.length && i < csTw.length; i++) {
+      if (!JEWEL_NESTED_IDS.has(String(csEn[i].Id || ''))) continue;
+      const enC = clean(csEn[i].Text);
+      const zhC = clean(csTw[i].Text);
+      if (!enC || !zhC || isBroken(zhC)) continue;
+      if (!textAcc.some((t) => t.en === enC)) { textAcc.push({ en: enC, zh: zhC, text: [0] }); jn++; }
+    }
+    console.log(`ClientStrings(珠寶巢狀詞綴): +${jn}`);
   } catch (e) {
     console.warn('skip ClientStrings templates', e.message);
+  }
+
+  // 補充文字佔位符模板:.csd 內 {0} 是 passive_hash(天賦名),detectTextIdx 抓不到該 handler
+  // → 自動管線漏掉。以下官方文字(遊戲/poe.ninja 顯示繁中,可在 poe2db 驗證)補進文字佔位符表。
+  // From Nothing(從無到有)「of {Notable}」變體目前無 .dat 表來源,故在此補。
+  const SUPPLEMENT_TEXT_TEMPLATES = [
+    { en: 'Passives in Radius of {0} can be Allocated without being connected to your tree',
+      zh: '範圍{0}內的天賦可以在沒有連結你的天賦樹下被配置', text: [0] },
+  ];
+  for (const t of SUPPLEMENT_TEXT_TEMPLATES) {
+    if (!textAcc.some((e) => e.en === t.en)) textAcc.push(t);
+  }
+
+  // 天賦名佔位符模板:某些 stat 的 {0} 是「天賦/基石名」(文字),而非數字。
+  // .csd 的 handler 不是 specific_skill/display_indexable_support → detectTextIdx 抓不到,
+  // 故被分到數字桶,bucketKey 變成 "Allocates {}",但實例「Allocates Mind Eraser」沒有數字
+  // 可正規化 → 永遠對不上。這裡把這些「官方模板」從數字桶提升為文字佔位符模板,
+  // 讓執行期把佔位符當天賦名,再用 nameMap 翻成中文(妄想症/禁忌血肉烈焰/從無到有 等珠寶)。
+  const PASSIVE_NAME_TEMPLATES = new Set([
+    'Allocates {0}',
+    'Allocates {0} if you have the matching modifier on Forbidden Flesh',
+    'Allocates {0} if you have the matching modifier on Forbidden Flame',
+  ]);
+  for (const [key, arr] of acc) {
+    for (const e of arr) {
+      if (PASSIVE_NAME_TEMPLATES.has(e.en) && !textAcc.some((t) => t.en === e.en)) {
+        textAcc.push({ en: e.en, zh: e.zh, text: [0] });
+      }
+    }
   }
 
   const templates = {};
