@@ -74,10 +74,73 @@ function sweepTable(map, name, columns) {
   return n;
 }
 
+// ---- 參照對挖掘(ref-pair mining)----
+// 官方文字常以 [RefId|顯示文字] 內嵌名詞,清單型內容只存在這種參照裡。
+// 例:KeywordPopups 魔遺清單 EN「[LegacyOfDiamond|Legacy of Diamond]」
+//                          TW「[LegacyOfDiamond|寶鑽之遺]」
+// EN/TW 以 RefId 對齊(同 id 多次出現依序配對)→ 自動萃取顯示文字對照。
+// 涵蓋「沒有獨立名稱表」的新內容(魔遺/關鍵字內嵌名詞…),未來新增自動跟上。
+// 安全性同 uiAuto(整節點精確比對 + maxLen + deny);RefId 相同才配對,零錯位。
+function collectRefs(s) {
+  const out = new Map(); // refId -> [顯示文字, …](依出現順序)
+  const re = /\[([^|\]]+)\|([^\]]+)\]/g;
+  let m;
+  while ((m = re.exec(s))) {
+    if (!out.has(m[1])) out.set(m[1], []);
+    out.get(m[1]).push(m[2]);
+  }
+  return out;
+}
+function mineRefs(map, name, columns) {
+  const t = loadTable(name);
+  if (!t) return 0;
+  const cols = columns === '*'
+    ? Object.keys(t.en[0] || {}).filter((c) => c !== '_index')
+    : columns;
+  let n = 0;
+  const lim = Math.min(t.en.length, t.tw.length);
+  for (let i = 0; i < lim; i++) {
+    for (const col of cols) {
+      const e = String(t.en[i][col] || '');
+      const z = String(t.tw[i][col] || '');
+      if (!e.includes('|') || !z.includes('|')) continue;
+      const em = collectRefs(e);
+      const zm = collectRefs(z);
+      for (const [id, list] of em) {
+        const zl = zm.get(id);
+        if (!zl) continue;
+        const cnt = Math.min(list.length, zl.length);
+        for (let k = 0; k < cnt; k++) {
+          const ek = norm(list[k]);
+          const zk = norm(zl[k]);
+          if (!ek || !zk || ek === zk) continue;
+          if (!hasLetter(ek) || !isCJK(zk)) continue;
+          if (ek.length > UI_MAXLEN) continue;
+          if (/[{}<>[\]]/.test(ek) || /[{}<>[\]]/.test(zk)) continue;
+          const key = ek.toLowerCase();
+          // 挖掘來源量大且未經人工確認 → 比欄位掃描更保守:
+          // 短單字(hit/meta/gain/type…)在 poe.ninja 站方 UI 出現機率高,容易亂翻,不收;
+          // 多字詞(legacy of diamond)與長單字(resistance)為遊戲術語,風險低。
+          if (!key.includes(' ') && key.length < 6) continue;
+          if (UI_GENERIC_DENY.has(key)) continue;
+          if (key in map) continue;
+          map[key] = zk;
+          n++;
+        }
+      }
+    }
+  }
+  console.log(`${name}(ref 挖掘): 新增 ${n}`);
+  return n;
+}
+
 const ui = {};
 for (const { table, columns } of entriesFor('ui')) sweepTable(ui, table, columns);
 // ⚠️ ClientStrings(遊戲介面字串大表)仍不進 uiAuto:含大量泛用英文字 + 噪音,
 //    整節點比對也會在 poe.ninja 亂翻。其「長句」走 build-descriptions 自動規則(安全)。
+// 參照對挖掘:欄位掃描之後才跑(欄位來源為準,挖掘只補新 key);ui + desc 路由表都挖。
+for (const { table, columns } of entriesFor('ui')) mineRefs(ui, table, columns);
+for (const { table, columns } of entriesFor('desc')) mineRefs(ui, table, columns);
 
 const dict = JSON.parse(readFileSync(dictPath, 'utf8'));
 const sorted = {};

@@ -45,8 +45,10 @@ const HTML = `<body>
   <svg id="s1"><style>.logo{fill:#fff}</style></svg>
   <!-- 行內 svg 圖示 + 詞綴:排除 svg 文字後仍可整行合併 -->
   <div id="s2"><svg><style>.ic{fill:#000}</style></svg><span>Mana Costs are Doubled</span></div>
-  <!-- keepEnglish:官方保留英文的名稱,片段(Diamond∈nameMap)不得被翻成「Legacy of 鑽石」 -->
+  <!-- 魔遺(ref 挖掘 uiAuto):拆節點與整節點都要翻成官方名 -->
   <div id="k1">Legacy of <a>Diamond</a></div>
+  <div id="k1b"><a>Legacy of Sulphur</a></div>
+  <!-- keepEnglish:尚無官方繁中的名稱整行保留 -->
   <div id="k2"><a>Hypnotic Glimmer</a></div>
   <!-- 站方 UI 樣式 -->
   <div id="p1">5 minutes ago</div>
@@ -125,7 +127,8 @@ const check = (name, cond, got) => {
   check('灌注標題 Cold-Infused', txt('n2') === '冰冷灌注', txt('n2'));
   check('svg <style> 內容未被動到', doc.getElementById('s1').textContent.includes('.logo{fill:#fff}'));
   check('行內 svg 圖示不擋整行合併', txt('s2').includes('魔力消耗加倍') && txt('s2').includes('.ic{fill:#000}'), txt('s2').replace(/\s+/g,' ').trim());
-  check('keepEnglish:片段不亂翻(Legacy of Diamond)', txt('k1').replace(/\s+/g,' ').trim() === 'Legacy of Diamond', txt('k1'));
+  check('魔遺拆節點整行翻譯(Legacy of Diamond)', txt('k1').replace(/\s+/g,' ').trim() === '寶鑽之遺', txt('k1'));
+  check('魔遺整節點翻譯(Legacy of Sulphur)', txt('k1b') === '硫磺之遺', txt('k1b'));
   check('keepEnglish:整名保留(Hypnotic Glimmer)', txt('k2') === 'Hypnotic Glimmer', txt('k2'));
   check('相對時間 5 minutes ago', txt('p1') === '5 分鐘前', txt('p1'));
   check('寶石等級來源 (Max)', txt('p2') === '來自寶石 20 等（上限）', txt('p2'));

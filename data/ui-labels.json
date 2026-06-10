@@ -203,10 +203,6 @@
   },
   "_comment_keepEnglish": "官方(目前資料)保留英文或尚無繁中的名稱:整行精確比對,行內任何片段都不得翻(防『Legacy of 鑽石』式亂翻)。新 patch 資料若補上官方繁中(進 dict names),自動改走正常翻譯。",
   "keepEnglish": [
-    "Legacy of Diamond",
-    "Legacy of Sulphur",
-    "Legacy of Quicksilver",
-    "Legacy of Ezomyte",
     "Hypnotic Glimmer",
     "Runes of Aldur",
     "The Seven Pillars",

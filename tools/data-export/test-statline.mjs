@@ -54,7 +54,7 @@ function statLinePass(root, doc) {
 // 描述與符文前綴(從 dict.json 讀)
 const dict = JSON.parse(readFileSync(join(base, 'data', 'dict.json'), 'utf8'));
 const descMap = new Map(Object.entries(dict.descriptions || {}).map(([k, v]) => [k.replace(/\s+/g, ' ').trim(), v]));
-const RUNE_PREFIX = { 'martial weapon': '近戰武器', 'wand or staff': '法杖或長杖', 'armour': '護甲' };
+const RUNE_PREFIX = { 'martial weapon': '軍用武器', 'wand or staff': '法杖或長杖', 'armour': '護甲' };
 function translateLine(norm) {
   const d = descMap.get(norm); if (d) return d;
   const s = translateStat(norm); if (s) return s;

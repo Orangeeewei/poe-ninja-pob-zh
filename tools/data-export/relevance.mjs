@@ -78,6 +78,8 @@ export const UI_GENERIC_DENY = new Set([
   'for', 'may', 'art', 'default', 'none', 'other', 'options', 'option', 'character',
   'level', 'help', 'back', 'next', 'done', 'cancel', 'ok', 'yes', 'no', 'on', 'off',
   'reflection', 'punishment', 'discipline', 'immunity', 'converted', 'spectral',
+  // poe.ninja 站方 UI 自身會出現的字(Meta 流行度、Gain 漲幅欄)→ 遊戲詞義會亂翻
+  'meta', 'gain', 'gains',
 ]);
 
 // 從 ROUTED 取某 route 的 [{table, columns}](columns 為 '*' 或欄名陣列)。

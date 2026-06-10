@@ -83,11 +83,13 @@
     { re: /^(\d+)\s*\(Max\)$/i, zh: (m) => m[1] + '（上限）' },
   ];
 
-  // 符文等「物品類型限制: 詞綴」前綴的中文(找不到就維持英文,詞綴照樣翻)
+  // 符文等「物品類型限制: 詞綴」前綴的中文(找不到就維持英文,詞綴照樣翻)。
+  // 用詞以 ClientStrings 官方為準:Martial Weapon→軍用武器、Crossbow→十字弓、
+  // Wand or Staff→法杖或長杖、Quiver→箭袋(2026-06-10 查證)。
   const RUNE_PREFIX = {
-    'martial weapon': '近戰武器', 'wand or staff': '法杖或長杖', 'caster weapon': '施法武器',
-    'armour': '護甲', 'martial weapon or focus': '近戰武器或法器', 'focus': '法器',
-    'bow': '弓', 'crossbow': '弩', 'quiver': '箭袋', 'shield': '盾',
+    'martial weapon': '軍用武器', 'wand or staff': '法杖或長杖', 'caster weapon': '施法武器',
+    'armour': '護甲', 'martial weapon or focus': '軍用武器或法器', 'focus': '法器',
+    'bow': '弓', 'crossbow': '十字弓', 'quiver': '箭袋', 'shield': '盾',
   };
 
   // 詞綴數值樣式:傳奇物品在 poe.ninja 以「數值範圍」顯示詞綴(min-max 卷軸範圍),
@@ -327,7 +329,8 @@
     for (let i = 0; el && i < 3; i++, el = el.parentElement) {
       const t = el.textContent.replace(/\s+/g, ' ').trim();
       if (t.length > 60) return false;
-      if (keepNames.has(t) && !(nameMap && nameMap.has(t))) return true;
+      // 名稱已有官方繁中(nameMap/uiMap)→ 解除保護,走正常翻譯
+      if (keepNames.has(t) && !(nameMap && nameMap.has(t)) && !(uiMap && uiMap.has(t.toLowerCase()))) return true;
     }
     return false;
   }
@@ -533,8 +536,9 @@
       const nodes = lineTextNodes(el);
       const norm = nodes.map((n) => n.nodeValue).join('').replace(/\s+/g, ' ').trim();
       if (!norm || !/[A-Za-z]/.test(norm)) continue;
-      // 整行比對:描述/詞綴模板 → 名稱(poe.ninja 會把名稱拆成多節點,如「Legacy of <a>…</a>」)
-      const zh = translateLine(norm) || (nameMap && nameMap.get(norm)) || null;
+      // 整行比對:描述/詞綴模板 → 名稱/UI 詞(poe.ninja 會把名稱拆成多節點,如「Legacy of <a>…</a>」)
+      const zh = translateLine(norm) || (nameMap && nameMap.get(norm)) ||
+                 (uiMap && uiMap.get(norm.toLowerCase())) || null;
       if (zh) {
         let target = null;
         for (const n of nodes) if (n.nodeValue && n.nodeValue.trim()) { target = n; break; }

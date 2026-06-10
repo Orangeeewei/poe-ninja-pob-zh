@@ -49,9 +49,11 @@ for (const [en, want] of [['Currency', '通貨'], ['Amulets', '項鍊'], ['Life 
 }
 
 // ② 子字串安全:整節點不等於 key → 不可被改
-for (const en of ['Currency Orb', 'Chaos Orb', 'Witch Hunter Ascendancy', 'A bow for the ranger']) {
+//    (Chaos Orb 自 ref 挖掘後整節點命中 uiAuto=混沌石,與 names 官方值一致 → 移到①類)
+for (const en of ['Currency Orb', 'Witch Hunter Ascendancy', 'A bow for the ranger']) {
   const n = nodeFor(en); translateNodeUI(n); check('nochange:' + en, n.nodeValue, en);
 }
+{ const n = nodeFor('Chaos Orb'); translateNodeUI(n); check('hit:Chaos Orb(ref 挖掘)', n.nodeValue, '混沌石'); }
 
 // ③ 前後空白保留(只換 trim 後的字)
 { const n = nodeFor('  Currency  '); translateNodeUI(n); check('whitespace', n.nodeValue, '  通貨  '); }

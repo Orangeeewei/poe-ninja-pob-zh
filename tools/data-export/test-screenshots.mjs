@@ -172,7 +172,7 @@ const CHECKS = [
   { id: 't28', must: '充能', noEng: true, desc: '圖35 藥劑 Consumes (20-25) of 75 Charges on use' },
   { id: 't29', must: '胸甲（命定）', noEng: true, desc: '圖38 魔像 Body Armour (Bonded): …' },
   { id: 't30', must: '此技能會複製', noEng: true, desc: '圖39 ClientStrings 自動長句 This Skill will copy…' },
-  { id: 't31', must: '近戰武器（命定）', noEng: true, desc: '圖42 魔像 Martial Weapon (Bonded): …' },
+  { id: 't31', must: '軍用武器（命定）', noEng: true, desc: '圖42 魔像 Martial Weapon (Bonded): …(官方:軍用武器)' },
   // 寶石(珠寶)顯示修正
   { id: 'g1', must: '配置心靈抹除', noEng: true, desc: '圖1 妄想症 {enchant}Allocates Mind Eraser' },
   { id: 'g1b', must: '配置擊穿防禦', noEng: true, desc: '圖1 妄想症 {enchant}Allocates Struck Through' },
