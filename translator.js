@@ -32,6 +32,11 @@
   // Alt+點右下按鈕 → console 印出 + 複製到剪貼簿,直接餵白名單流程。
   const misses = new Set();
   const MISS_CAP = 1000;
+  // 刻意保留英文的品牌/專名 → 不收進清單(降噪)
+  const KEEP_ENGLISH = new Set([
+    'poe.ninja', 'Discord', 'wiki', 'POE 1', 'POE 2', 'PoE 1', 'PoE 2',
+    'Path of Building', 'Grinding Gear Games', 'GGG',
+  ]);
 
   // 設定文字節點值:首次先保存原文(供切回英文還原),並記回音標記。
   function setNodeValue(node, val) {
@@ -59,6 +64,12 @@
       .replace(/\bLevel\s+(?=[\d(])/g, '等級 ')
       .replace(/([+-]?\d+)\s+(Str|Dex|Int)\b/gi, (m, num, a) => num + ' ' + ATTR_ABBR[a.toLowerCase()]);
   }
+
+  // 數值欄單位(官方:魔力/生命/精魂;ClientStrings「Sec→秒」)
+  const UNIT_WORD = {
+    mana: '魔力', life: '生命', spirit: '精魂',
+    sec: '秒', secs: '秒', seconds: '秒',
+  };
 
   // 符文等「物品類型限制: 詞綴」前綴的中文(找不到就維持英文,詞綴照樣翻)
   const RUNE_PREFIX = {
@@ -266,7 +277,10 @@
   function shouldSkip(node) {
     let el = node.parentElement;
     while (el) {
-      if (SKIP_TAGS.has(el.tagName)) return true;
+      // SVG 元素的 tagName 是小寫(HTML 才是大寫)→ 統一大寫比對,
+      // 否則 svg 內的 <style> CSS 文字會漏進翻譯流程。
+      if (SKIP_TAGS.has(el.tagName.toUpperCase())) return true;
+      if (el.tagName.toUpperCase() === 'SVG') return true;
       if (el.isContentEditable) return true;
       for (const c of SKIP_CLASS) if (el.classList && el.classList.contains(c)) return true;
       el = el.parentElement;
@@ -375,6 +389,17 @@
       }
     }
 
+    // 3d) 「數字 + 單位」整節點(poe.ninja 數值欄:消耗「56 Mana」、施放時間「0.70 sec」)。
+    //     限整個節點恰為此形,零誤判;句子層級的缺漏留給詞綴模板/收集器,不在這裡半翻。
+    const um = trimmed.match(/^([+-]?[\d.,]+)\s*(Mana|Life|Spirit|secs?|seconds)$/i);
+    if (um) {
+      const zhUnit = UNIT_WORD[um[2].toLowerCase()];
+      if (zhUnit) {
+        setNodeValue(node, raw.replace(trimmed, () => um[1] + ' ' + zhUnit));
+        return true;
+      }
+    }
+
     // 4) 多字名稱:子字串替換(例如 "Level 93 Spirit Walker");先做便宜首詞預過濾
     if (multiWordRegex && mayContainMultiWord(trimmed)) {
       multiWordRegex.lastIndex = 0;
@@ -385,8 +410,12 @@
       }
     }
 
-    // 全部沒命中 → 收進未翻譯收集器(Alt+點按鈕匯出),供白名單流程消化
-    if (misses.size < MISS_CAP && trimmed.length <= 160 && /[A-Za-z]{2,}/.test(trimmed)) {
+    // 全部沒命中 → 收進未翻譯收集器(Alt+點按鈕匯出),供白名單流程消化。
+    // 過濾:CSS/標記類字串、刻意保留英文的品牌名。
+    if (
+      misses.size < MISS_CAP && trimmed.length <= 160 && /[A-Za-z]{2,}/.test(trimmed) &&
+      !/[{}<>;]/.test(trimmed) && !/^[.#]/.test(trimmed) && !KEEP_ENGLISH.has(trimmed)
+    ) {
       misses.add(trimmed);
     }
     return false;
@@ -427,11 +456,11 @@
   function statLinePass(root) {
     if (!statTemplates) return;
     const els = [];
-    if (root.nodeType === 1 && !SKIP_TAGS.has(root.tagName)) els.push(root);
+    if (root.nodeType === 1 && !SKIP_TAGS.has(root.tagName.toUpperCase())) els.push(root);
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
       acceptNode(el) {
         if (el.__pobTx) return NodeFilter.FILTER_REJECT;
-        if (SKIP_TAGS.has(el.tagName)) return NodeFilter.FILTER_REJECT;
+        if (SKIP_TAGS.has(el.tagName.toUpperCase())) return NodeFilter.FILTER_REJECT;
         if (el.classList) for (const c of SKIP_CLASS) if (el.classList.contains(c)) return NodeFilter.FILTER_REJECT;
         return NodeFilter.FILTER_ACCEPT;
       },

@@ -33,6 +33,16 @@ const HTML = `<body>
   <div id="e1">Lineage Support Ge...</div>
   <!-- 網站重繪模擬目標 -->
   <div id="r1">Mana Costs are Doubled</div>
+  <!-- 數值欄「數字+單位」 -->
+  <div id="u1">56 Mana</div>
+  <div id="u2">0.70 sec</div>
+  <!-- 句子層級不可被單位規則半翻(留給收集器) -->
+  <div id="u3">Gain 5 Mana per Enemy Killed by Hits</div>
+  <!-- 導覽列/灌注標題 -->
+  <div id="n1">Precursor Tablets</div>
+  <div id="n2">Cold-Infused</div>
+  <!-- svg 的 <style> 不得進翻譯(SVG tagName 是小寫) -->
+  <svg id="s1"><style>.logo{fill:#fff}</style></svg>
   <!-- sentinel -->
   <div id="sentinel">Energy Shield</div>
 </body>`;
@@ -94,6 +104,15 @@ const check = (name, cond, got) => {
 
   // 3) 截斷字串
   check('截斷字串前綴唯一命中', txt('e1') === '血脈輔助寶石', txt('e1'));
+
+  // 3.5) 數值單位 / 導覽列 / svg style
+  check('數值單位 56 Mana', txt('u1') === '56 魔力', txt('u1'));
+  check('數值單位 0.70 sec', txt('u2') === '0.70 秒', txt('u2'));
+  // 允許:完全沒翻(交給收集器)或被詞綴模板完整翻譯;不允許只把單位半翻成「5 魔力」混在英文句裡
+  check('句子不被單位規則半翻', !(txt('u3').includes('魔力') && /[A-Za-z]/.test(txt('u3'))), txt('u3'));
+  check('導覽 Precursor Tablets', txt('n1') === '先行者碑牌', txt('n1'));
+  check('灌注標題 Cold-Infused', txt('n2') === '冰冷灌注', txt('n2'));
+  check('svg <style> 內容未被動到', doc.getElementById('s1').textContent.includes('.logo{fill:#fff}'));
 
   // 4) 切英文:全部可逆(含骨架行、屬性)
   btn.click();

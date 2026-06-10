@@ -167,6 +167,30 @@
     "Dex": "敏捷",
     "Int": "智慧",
     "Bonded": "命定",
-    "Body Armour": "胸甲"
+    "Body Armour": "胸甲",
+
+    "Economy": "經濟",
+    "Builds": "配置",
+    "Trade": "交易",
+    "Statistics": "統計",
+    "League": "聯盟",
+    "Categories": "類別",
+    "More": "更多",
+    "About": "關於",
+    "FAQ": "常見問題",
+    "Resources": "資源",
+    "Contribute": "貢獻",
+    "Data dumps": "資料匯出",
+    "Support the site": "支持本站",
+    "Advertise on this site": "在本站投放廣告",
+    "poe.ninja is not affiliated with or endorsed by Grinding Gear Games.": "poe.ninja 與 Grinding Gear Games 並無關聯，亦未獲其背書。",
+
+    "Precursor Tablets": "先行者碑牌",
+    "Precursor Tablet": "先行者碑牌",
+    "Unique Tablets": "傳奇碑牌",
+    "Average Hit": "平均打擊",
+    "Cold-Infused": "冰冷灌注",
+    "Fire-Infused": "火焰灌注",
+    "Lightning-Infused": "閃電灌注"
   }
 }
