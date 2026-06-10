@@ -48,6 +48,9 @@ const HTML = `<body>
   <!-- 魔遺(ref 挖掘 uiAuto):拆節點與整節點都要翻成官方名 -->
   <div id="k1">Legacy of <a>Diamond</a></div>
   <div id="k1b"><a>Legacy of Sulphur</a></div>
+  <!-- 魔血真實 DOM(使用者提供):tooltip 觸發器是 span[data-tooltip-trigger],非 <a> -->
+  <div id="mb1" class="whitespace-pre-line"><span>Legacy of </span><span class="underline decoration-dotted" data-tooltip-trigger="true" data-tooltip-id="_r_1_">Diamond</span><span></span></div>
+  <div id="mb2" class="whitespace-pre-line"><span>All </span><span class="underline decoration-dotted" data-tooltip-trigger="true" data-tooltip-id="_r_2_">Mage's Legacies</span><span> have 48% increased effect per duplicate </span><span class="underline decoration-dotted" data-tooltip-trigger="true" data-tooltip-id="_r_3_">Mage's Legacy</span><span> you have</span></div>
   <!-- keepEnglish:尚無官方繁中的名稱整行保留 -->
   <div id="k2"><a>Hypnotic Glimmer</a></div>
   <!-- 站方 UI 樣式 -->
@@ -130,6 +133,13 @@ const check = (name, cond, got) => {
   check('魔遺拆節點整行翻譯(Legacy of Diamond)', txt('k1').replace(/\s+/g,' ').trim() === '寶鑽之遺', txt('k1'));
   check('魔遺譯文寫進連結內(可點、保留樣式)', doc.querySelector('#k1 a').textContent === '寶鑽之遺', doc.querySelector('#k1 a').textContent);
   check('魔遺整節點翻譯(Legacy of Sulphur)', txt('k1b') === '硫磺之遺', txt('k1b'));
+  // 魔血真實 DOM:tooltip 觸發 span 必須保有文字(hover lore),不得被清空
+  const mb1t = doc.querySelector('#mb1 [data-tooltip-trigger]');
+  check('魔血魔遺行整行翻譯', txt('mb1').replace(/\s+/g,' ').trim() === '寶鑽之遺', txt('mb1'));
+  check('魔血觸發 span 保有譯文(hover lore 可用)', mb1t.textContent === '寶鑽之遺', mb1t.textContent);
+  const mb2t = [...doc.querySelectorAll('#mb2 [data-tooltip-trigger]')].map(e=>e.textContent);
+  check('48% 行整行翻譯且零英文', !/[A-Za-z]/.test(txt('mb2')) && txt('mb2').includes('魔遺'), txt('mb2').replace(/\s+/g,' ').trim());
+  check('48% 行兩個觸發詞各保有「魔遺」', mb2t.length === 2 && mb2t.every(t=>t === '魔遺'), JSON.stringify(mb2t));
   check('keepEnglish:整名保留(Hypnotic Glimmer)', txt('k2') === 'Hypnotic Glimmer', txt('k2'));
   check('相對時間 5 minutes ago', txt('p1') === '5 分鐘前', txt('p1'));
   check('寶石等級來源 (Max)', txt('p2') === '來自寶石 20 等（上限）', txt('p2'));

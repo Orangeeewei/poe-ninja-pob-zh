@@ -498,6 +498,99 @@
     return out;
   }
 
+  // 互動元素:hover 會出 lore 彈窗 / 可點擊。整行合併時必須讓它們保有自己的文字,
+  // 否則觸發元素被清空 → 彈窗無從觸發(poe.ninja 的觸發器是 span[data-tooltip-trigger])。
+  const INTERACTIVE_SEL = 'a,button,[data-tooltip-trigger]';
+
+  // 詞語層級查中文(供分配演算法翻觸發詞):精確名 → UI 詞 → 單複數變化 → 整行規則
+  function lookupTerm(en) {
+    let zh = (nameMap && nameMap.get(en)) || (uiMap && uiMap.get(en.toLowerCase()));
+    if (zh) return zh;
+    const sing = en.replace(/ies$/i, 'y').replace(/s$/i, '');
+    if (sing !== en) {
+      zh = (nameMap && nameMap.get(sing)) || (uiMap && uiMap.get(sing.toLowerCase()));
+      if (zh) return zh;
+    }
+    return translateLine(en);
+  }
+
+  // 多觸發詞行的「分配」:整行中文已知,把各觸發詞的中文定位於整行中文內,分段寫回。
+  // 例:「All <t>Mage's Legacies</t> have 48% … <t>Mage's Legacy</t> you have」
+  //  → 「你每擁有一個重複的<t>魔遺</t>，即增加 48% 所有<t>魔遺</t>效果」(hover lore 保留)。
+  // 任一觸發詞無法定位(非組合式譯名)→ 回傳 false,改走其他模式。
+  function distributeLine(nodes, zh, triggerEls) {
+    const tset = new Set(triggerEls);
+    const ownerOf = (n) => {
+      for (let p = n.parentElement; p; p = p.parentElement) if (tset.has(p)) return p;
+      return null;
+    };
+    // 依文件順序把文字節點分組:同一觸發元素一組、連續的非觸發節點一組
+    const groups = [];
+    for (const n of nodes) {
+      const o = ownerOf(n);
+      const last = groups[groups.length - 1];
+      if (last && last.trigger === o) last.nodes.push(n);
+      else groups.push({ trigger: o, nodes: [n], text: null, start: -1, end: -1 });
+    }
+    // 觸發詞由左至右定位(同詞多次出現依序配對)
+    let pos = 0;
+    for (const g of groups) {
+      if (!g.trigger) continue;
+      const en = g.nodes.map((n) => n.nodeValue).join('').replace(/\s+/g, ' ').trim();
+      if (!en) { g.text = ''; g.start = g.end = pos; continue; }
+      const term = lookupTerm(en);
+      if (!term) return false;
+      const idx = zh.indexOf(term, pos);
+      if (idx === -1) return false;
+      g.text = term; g.start = idx; g.end = idx + term.length;
+      pos = g.end;
+    }
+    // 非觸發段 = 觸發詞之間的中文;觸發詞前若有未認領的字,掛到前一段
+    let cursor = 0;
+    let prev = null;
+    for (let i = 0; i < groups.length; i++) {
+      const g = groups[i];
+      if (g.trigger) {
+        const gap = zh.slice(cursor, g.start);
+        if (gap) { if (prev) prev.text += gap; else g.text = gap + g.text; }
+        cursor = g.end;
+      } else {
+        let next = zh.length;
+        for (let j = i + 1; j < groups.length; j++) if (groups[j].trigger) { next = groups[j].start; break; }
+        g.text = zh.slice(cursor, next);
+        cursor = next;
+      }
+      prev = g;
+    }
+    if (cursor < zh.length && prev) prev.text += zh.slice(cursor);
+    // 寫回:每段第一個文字節點承載文字,其餘清空
+    for (const g of groups) {
+      let first = true;
+      for (const n of g.nodes) {
+        if (first) { setNodeValue(n, g.text); first = false; }
+        else if (n.nodeValue && n.nodeValue.trim()) setNodeValue(n, '');
+        processed.add(n);
+      }
+    }
+    return true;
+  }
+
+  // 整行譯文寫進單一節點(target 未指定 → 第一個有字的節點),其餘清空
+  function writeWhole(nodes, zh, target) {
+    if (!target) {
+      for (const n of nodes) if (n.nodeValue && n.nodeValue.trim()) { target = n; break; }
+    }
+    if (!target) return false;
+    setNodeValue(target, zh);
+    processed.add(target);
+    for (const n of nodes) {
+      if (n === target) continue;
+      if (n.nodeValue && n.nodeValue.trim()) setNodeValue(n, '');
+      processed.add(n);
+    }
+    return true;
+  }
+
   // shadow DOM:open shadow root 也要翻(TreeWalker 不會自己進去)。
   const shadowRoots = new Set();
   function adoptShadow(el) {
@@ -540,29 +633,22 @@
       const zh = translateLine(norm) || (nameMap && nameMap.get(norm)) ||
                  (uiMap && uiMap.get(norm.toLowerCase())) || null;
       if (zh) {
-        let target = null;
-        // 短行(名稱/標籤行)且恰有一個 <a>(如魔遺「Legacy of <a>Diamond</a>」)→
-        // 譯文寫進連結內,保留連結樣式與可點擊;寫在連結外會讓連結變空(看不見、點不到)。
-        // 長句(詞綴行)不適用:整句塞進關鍵字連結會讓整行變成連結,維持寫進第一個文字節點。
-        if (norm.length <= 40) {
-          const anchors = el.querySelectorAll('a');
-          if (anchors.length === 1) {
-            for (const n of nodes) {
-              if (n.nodeValue && n.nodeValue.trim() && anchors[0].contains(n)) { target = n; break; }
-            }
+        const triggers = el.querySelectorAll(INTERACTIVE_SEL);
+        let done = false;
+        // ① 行內有互動元素(tooltip 觸發詞/連結)→ 先試「分配」:各觸發詞保有自己的中文
+        if (triggers.length) done = distributeLine(nodes, zh, triggers);
+        // ② 分配不了且為短名稱行 + 單一觸發元素(如魔遺「Legacy of <t>Diamond</t>」=寶鑽之遺,
+        //    非組合式譯名)→ 整行譯文寫進觸發元素內,hover lore 與樣式保留
+        if (!done && triggers.length === 1 && norm.length <= 40) {
+          let target = null;
+          for (const n of nodes) {
+            if (n.nodeValue && n.nodeValue.trim() && triggers[0].contains(n)) { target = n; break; }
           }
+          if (target) done = writeWhole(nodes, zh, target);
         }
-        if (!target) {
-          for (const n of nodes) if (n.nodeValue && n.nodeValue.trim()) { target = n; break; }
-        }
-        if (!target) continue;
-        setNodeValue(target, zh);
-        processed.add(target);
-        for (const n of nodes) {
-          if (n === target) continue;
-          if (n.nodeValue && n.nodeValue.trim()) setNodeValue(n, '');
-          processed.add(n);
-        }
+        // ③ 一般行:寫進第一個有字的文字節點
+        if (!done) done = writeWhole(nodes, zh, null);
+        if (!done) continue;
         el.__pobTx = true;
       }
     }
