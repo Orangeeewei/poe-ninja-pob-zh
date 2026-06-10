@@ -191,6 +191,33 @@
     "Average Hit": "平均打擊",
     "Cold-Infused": "冰冷灌注",
     "Fire-Infused": "火焰灌注",
-    "Lightning-Infused": "閃電灌注"
-  }
+    "Lightning-Infused": "閃電灌注",
+
+    "(gem)": "(寶石)",
+    "(trigger)": "(觸發)",
+    "Anoint": "塗油",
+    "Anoints": "塗油",
+    "Click for quest details": "點擊查看任務詳情",
+    "Enlarge": "放大",
+    "Open": "開啟"
+  },
+  "_comment_keepEnglish": "官方(目前資料)保留英文或尚無繁中的名稱:整行精確比對,行內任何片段都不得翻(防『Legacy of 鑽石』式亂翻)。新 patch 資料若補上官方繁中(進 dict names),自動改走正常翻譯。",
+  "keepEnglish": [
+    "Legacy of Diamond",
+    "Legacy of Sulphur",
+    "Legacy of Quicksilver",
+    "Legacy of Ezomyte",
+    "Hypnotic Glimmer",
+    "Runes of Aldur",
+    "The Seven Pillars",
+    "Chimeric Collar",
+    "Behemoth Chant",
+    "Blight Spiral",
+    "Bramble Dome",
+    "Ghoul Salvation",
+    "Rage Road",
+    "Venom Draught",
+    "Vaal Ring",
+    "Ezomyte Charm"
+  ]
 }

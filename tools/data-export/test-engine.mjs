@@ -43,6 +43,17 @@ const HTML = `<body>
   <div id="n2">Cold-Infused</div>
   <!-- svg 的 <style> 不得進翻譯(SVG tagName 是小寫) -->
   <svg id="s1"><style>.logo{fill:#fff}</style></svg>
+  <!-- 行內 svg 圖示 + 詞綴:排除 svg 文字後仍可整行合併 -->
+  <div id="s2"><svg><style>.ic{fill:#000}</style></svg><span>Mana Costs are Doubled</span></div>
+  <!-- keepEnglish:官方保留英文的名稱,片段(Diamond∈nameMap)不得被翻成「Legacy of 鑽石」 -->
+  <div id="k1">Legacy of <a>Diamond</a></div>
+  <div id="k2"><a>Hypnotic Glimmer</a></div>
+  <!-- 站方 UI 樣式 -->
+  <div id="p1">5 minutes ago</div>
+  <div id="p2">20 Levels from Gem (Max)</div>
+  <div id="p3">+1 Level from Corruption</div>
+  <div id="p4">(trigger)</div>
+  <div id="p5">26 Ward</div>
   <!-- sentinel -->
   <div id="sentinel">Energy Shield</div>
 </body>`;
@@ -113,6 +124,14 @@ const check = (name, cond, got) => {
   check('導覽 Precursor Tablets', txt('n1') === '先行者碑牌', txt('n1'));
   check('灌注標題 Cold-Infused', txt('n2') === '冰冷灌注', txt('n2'));
   check('svg <style> 內容未被動到', doc.getElementById('s1').textContent.includes('.logo{fill:#fff}'));
+  check('行內 svg 圖示不擋整行合併', txt('s2').includes('魔力消耗加倍') && txt('s2').includes('.ic{fill:#000}'), txt('s2').replace(/\s+/g,' ').trim());
+  check('keepEnglish:片段不亂翻(Legacy of Diamond)', txt('k1').replace(/\s+/g,' ').trim() === 'Legacy of Diamond', txt('k1'));
+  check('keepEnglish:整名保留(Hypnotic Glimmer)', txt('k2') === 'Hypnotic Glimmer', txt('k2'));
+  check('相對時間 5 minutes ago', txt('p1') === '5 分鐘前', txt('p1'));
+  check('寶石等級來源 (Max)', txt('p2') === '來自寶石 20 等（上限）', txt('p2'));
+  check('污染等級 +1', txt('p3') === '來自污染 +1 等', txt('p3'));
+  check('(trigger) 標籤', txt('p4') === '(觸發)', txt('p4'));
+  check('Ward 單位', txt('p5') === '26 保護', txt('p5'));
 
   // 4) 切英文:全部可逆(含骨架行、屬性)
   btn.click();

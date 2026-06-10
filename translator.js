@@ -47,6 +47,7 @@
 
   let uiMap = null;          // 小寫標籤 -> 中文
   let nameMap = null;        // 精確英文名 -> 中文
+  let keepNames = null;      // 官方保留英文的名稱(整行)→ 不得翻其中任何片段(防「Legacy of 鑽石」)
   let multiWordRegex = null; // 多字名稱的子字串比對
   let multiWordLookup = null;// 小寫多字名 -> 中文
   let multiWordFirst = null; // 多字名稱「首詞」集合(便宜預過濾,免得每個節點都跑大 regex)
@@ -65,11 +66,22 @@
       .replace(/([+-]?\d+)\s+(Str|Dex|Int)\b/gi, (m, num, a) => num + ' ' + ATTR_ABBR[a.toLowerCase()]);
   }
 
-  // 數值欄單位(官方:魔力/生命/精魂;ClientStrings「Sec→秒」)
+  // 數值欄單位(官方:魔力/生命/精魂;ClientStrings「Sec→秒」「Ward→保護」)
   const UNIT_WORD = {
-    mana: '魔力', life: '生命', spirit: '精魂',
+    mana: '魔力', life: '生命', spirit: '精魂', ward: '保護',
     sec: '秒', secs: '秒', seconds: '秒',
   };
+
+  // poe.ninja 站方 UI 樣式(整節點比對,零誤判):相對時間、寶石等級來源、(Max)
+  const TIME_WORD = { second: '秒', minute: '分鐘', hour: '小時', day: '天', week: '週', month: '個月', year: '年' };
+  const LEVEL_SRC = { gem: '寶石', corruption: '污染', support: '輔助寶石' };
+  const SITE_PATTERNS = [
+    { re: /^(a|an|\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago$/i,
+      zh: (m) => (/^an?$/i.test(m[1]) ? '1' : m[1]) + ' ' + TIME_WORD[m[2].toLowerCase()] + '前' },
+    { re: /^([+-]?\d+)\s+Levels?\s+from\s+(Gem|Corruption|Support)(\s*\(Max\))?$/i,
+      zh: (m) => '來自' + LEVEL_SRC[m[2].toLowerCase()] + ' ' + m[1] + ' 等' + (m[3] ? '（上限）' : '') },
+    { re: /^(\d+)\s*\(Max\)$/i, zh: (m) => m[1] + '（上限）' },
+  ];
 
   // 符文等「物品類型限制: 詞綴」前綴的中文(找不到就維持英文,詞綴照樣翻)
   const RUNE_PREFIX = {
@@ -90,6 +102,9 @@
   const processed = new WeakSet();
 
   function buildIndexes(dict, ui, stats) {
+    // 官方保留英文的名稱:資料側(dict.keepNames,未來由 build 產出)∪ 手工(ui-labels keepEnglish)。
+    // 新傳奇/新底材常不在舊資料表 → 先手工列入避免片段亂翻;等官方繁中入字典後 nameMap 優先。
+    keepNames = new Set([...(dict && dict.keepNames || []), ...(ui && ui.keepEnglish || [])]);
     statTemplates = (stats && stats.templates) || null;
     // 含文字佔位符的模板(如「+{0} to Level of all {1} Skills」,{1}=技能名)→ 預編 regex。
     textStats = compileTextStats((stats && stats.textTemplates) || []);
@@ -304,6 +319,19 @@
     return hits.size === 1 ? hits.values().next().value : null;
   }
 
+  // 此節點是否位在「官方保留英文的名稱」整行內(往上最多 3 層比對行文字)。
+  // 命中且該名稱尚無官方繁中(不在 nameMap)→ 整行任何片段都不得翻。
+  function inKeptName(node) {
+    if (!keepNames || !keepNames.size) return false;
+    let el = node.parentElement;
+    for (let i = 0; el && i < 3; i++, el = el.parentElement) {
+      const t = el.textContent.replace(/\s+/g, ' ').trim();
+      if (t.length > 60) return false;
+      if (keepNames.has(t) && !(nameMap && nameMap.has(t))) return true;
+    }
+    return false;
+  }
+
   // 翻譯單一文字節點，回傳是否有改動。
   // 注意:所有 raw.replace(trimmed, X) 的 X 一律用函式回傳,避免譯文含 $ 被當特殊替換樣式。
   function translateTextNode(node) {
@@ -314,9 +342,14 @@
     // 已是中文(沒有英文字母)就不用處理
     if (!/[A-Za-z]/.test(trimmed)) return false;
 
+    // 保留英文名稱的片段保護(懶計算:多數節點用不到)
+    let kept = null;
+    const isKept = () => (kept === null ? (kept = inKeptName(node)) : kept);
+
     // 1) UI 標籤:整個節點精確比對(大小寫無關)
     const ui = uiMap.get(trimmed.toLowerCase());
     if (ui) {
+      if (isKept()) return false;
       setNodeValue(node, raw.replace(trimmed, () => ui));
       return true;
     }
@@ -324,6 +357,7 @@
     // 2) 名稱:整個節點精確比對
     const exact = nameMap.get(trimmed);
     if (exact) {
+      if (isKept()) return false;
       setNodeValue(node, raw.replace(trimmed, () => exact));
       return true;
     }
@@ -331,7 +365,7 @@
     // 2b) 截斷字串(結尾省略號)→ 字典前綴唯一命中才翻
     if (/(\.\.\.|…)$/.test(trimmed)) {
       const z = lookupTruncated(trimmed.replace(/(\.\.\.|…)$/, '').trim());
-      if (z) {
+      if (z && !isKept()) {
         setNodeValue(node, raw.replace(trimmed, () => z));
         return true;
       }
@@ -391,7 +425,7 @@
 
     // 3d) 「數字 + 單位」整節點(poe.ninja 數值欄:消耗「56 Mana」、施放時間「0.70 sec」)。
     //     限整個節點恰為此形,零誤判;句子層級的缺漏留給詞綴模板/收集器,不在這裡半翻。
-    const um = trimmed.match(/^([+-]?[\d.,]+)\s*(Mana|Life|Spirit|secs?|seconds)$/i);
+    const um = trimmed.match(/^([+-]?[\d.,]+)\s*(Mana|Life|Spirit|Ward|secs?|seconds)$/i);
     if (um) {
       const zhUnit = UNIT_WORD[um[2].toLowerCase()];
       if (zhUnit) {
@@ -400,9 +434,19 @@
       }
     }
 
+    // 3e) 站方 UI 樣式(相對時間「5 minutes ago」、寶石等級來源「20 Levels from Gem (Max)」…)
+    for (const p of SITE_PATTERNS) {
+      const pm2 = trimmed.match(p.re);
+      if (pm2) {
+        setNodeValue(node, raw.replace(trimmed, () => p.zh(pm2)));
+        return true;
+      }
+    }
+
     // 4) 多字名稱:子字串替換(例如 "Level 93 Spirit Walker");先做便宜首詞預過濾
     if (multiWordRegex && mayContainMultiWord(trimmed)) {
       multiWordRegex.lastIndex = 0;
+      if (isKept()) return false;
       const out = raw.replace(multiWordRegex, (m) => multiWordLookup.get(m.toLowerCase()) || m);
       if (out !== raw) {
         setNodeValue(node, out);
@@ -411,10 +455,13 @@
     }
 
     // 全部沒命中 → 收進未翻譯收集器(Alt+點按鈕匯出),供白名單流程消化。
-    // 過濾:CSS/標記類字串、刻意保留英文的品牌名。
+    // 過濾:CSS/標記類字串、品牌名、保留英文的名稱(整行或片段)、
+    // 玩家帳號(含 #/_/@)、純羅馬數字(II/III 武器組編號)。
     if (
       misses.size < MISS_CAP && trimmed.length <= 160 && /[A-Za-z]{2,}/.test(trimmed) &&
-      !/[{}<>;]/.test(trimmed) && !/^[.#]/.test(trimmed) && !KEEP_ENGLISH.has(trimmed)
+      !/[{}<>;]/.test(trimmed) && !/^[.#]/.test(trimmed) && !/[#_@]/.test(trimmed) &&
+      !/^[IVXLCDM]+$/.test(trimmed) && !KEEP_ENGLISH.has(trimmed) &&
+      !keepNames.has(trimmed) && !isKept()
     ) {
       misses.add(trimmed);
     }
@@ -430,12 +477,21 @@
     return d;
   }
 
-  // 收集元素子樹內所有文字節點(整行合併用)
+  // 收集元素子樹內所有文字節點(整行合併用)。
+  // 排除媒體元素(svg/canvas/picture/video)內部的文字(svg <style>/<text> 等),
+  // 讓「圖示 + 詞綴」同行時仍可安全合併(只動行文字,不碰圖示內部)。
   function lineTextNodes(el) {
     const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
     const out = [];
     let n;
-    while ((n = tw.nextNode())) out.push(n);
+    while ((n = tw.nextNode())) {
+      let inMedia = false;
+      for (let p = n.parentElement; p && p !== el; p = p.parentElement) {
+        const tag = p.tagName.toUpperCase();
+        if (tag === 'SVG' || tag === 'CANVAS' || tag === 'PICTURE' || tag === 'VIDEO') { inMedia = true; break; }
+      }
+      if (!inMedia) out.push(n);
+    }
     return out;
   }
 
@@ -473,14 +529,13 @@
       if (el.__pobTx || !el.isConnected) continue;    // 已處理 / 已被上層替換而脫離
       if (el.childElementCount === 0) continue;       // 單一文字節點的行 → 交給 translateTextNode
       if (el.querySelector(BLOCK_SEL)) continue;       // 含區塊子元素 → 不是單行
-      // svg/canvas 等內部可能有自己的文字節點(svg <title>/<text>)→ 不做整行合併,
-      // 交給文字節點層。<img> 無內部文字,骨架保留下安全,照常合併。
-      if (el.querySelector('svg,canvas,picture,video')) continue;
-      const norm = el.textContent.replace(/\s+/g, ' ').trim();
+      // 行文字 = 排除媒體內部後的文字節點串接(行內 svg 圖示不會擋住合併)
+      const nodes = lineTextNodes(el);
+      const norm = nodes.map((n) => n.nodeValue).join('').replace(/\s+/g, ' ').trim();
       if (!norm || !/[A-Za-z]/.test(norm)) continue;
-      const zh = translateLine(norm);
+      // 整行比對:描述/詞綴模板 → 名稱(poe.ninja 會把名稱拆成多節點,如「Legacy of <a>…</a>」)
+      const zh = translateLine(norm) || (nameMap && nameMap.get(norm)) || null;
       if (zh) {
-        const nodes = lineTextNodes(el);
         let target = null;
         for (const n of nodes) if (n.nodeValue && n.nodeValue.trim()) { target = n; break; }
         if (!target) continue;
