@@ -128,6 +128,7 @@ const check = (name, cond, got) => {
   check('svg <style> 內容未被動到', doc.getElementById('s1').textContent.includes('.logo{fill:#fff}'));
   check('行內 svg 圖示不擋整行合併', txt('s2').includes('魔力消耗加倍') && txt('s2').includes('.ic{fill:#000}'), txt('s2').replace(/\s+/g,' ').trim());
   check('魔遺拆節點整行翻譯(Legacy of Diamond)', txt('k1').replace(/\s+/g,' ').trim() === '寶鑽之遺', txt('k1'));
+  check('魔遺譯文寫進連結內(可點、保留樣式)', doc.querySelector('#k1 a').textContent === '寶鑽之遺', doc.querySelector('#k1 a').textContent);
   check('魔遺整節點翻譯(Legacy of Sulphur)', txt('k1b') === '硫磺之遺', txt('k1b'));
   check('keepEnglish:整名保留(Hypnotic Glimmer)', txt('k2') === 'Hypnotic Glimmer', txt('k2'));
   check('相對時間 5 minutes ago', txt('p1') === '5 分鐘前', txt('p1'));

@@ -541,7 +541,20 @@
                  (uiMap && uiMap.get(norm.toLowerCase())) || null;
       if (zh) {
         let target = null;
-        for (const n of nodes) if (n.nodeValue && n.nodeValue.trim()) { target = n; break; }
+        // 短行(名稱/標籤行)且恰有一個 <a>(如魔遺「Legacy of <a>Diamond</a>」)→
+        // 譯文寫進連結內,保留連結樣式與可點擊;寫在連結外會讓連結變空(看不見、點不到)。
+        // 長句(詞綴行)不適用:整句塞進關鍵字連結會讓整行變成連結,維持寫進第一個文字節點。
+        if (norm.length <= 40) {
+          const anchors = el.querySelectorAll('a');
+          if (anchors.length === 1) {
+            for (const n of nodes) {
+              if (n.nodeValue && n.nodeValue.trim() && anchors[0].contains(n)) { target = n; break; }
+            }
+          }
+        }
+        if (!target) {
+          for (const n of nodes) if (n.nodeValue && n.nodeValue.trim()) { target = n; break; }
+        }
         if (!target) continue;
         setNodeValue(target, zh);
         processed.add(target);
