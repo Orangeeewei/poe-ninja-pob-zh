@@ -6,7 +6,15 @@
  *   data/ui-labels.json      poe.ninja 介面固定標籤
  *   data/stat-templates.json 詞綴模板(來自遊戲 stat_descriptions，含 {N} 佔位符)
  *
- * 原理:只替換畫面上的文字節點，不動底層資料、input、連結 → 所有功能照常運作。
+ * 原理:只改文字節點與顯示屬性的「值」,絕不增刪/替換元素節點 → React 的 DOM
+ * 結構完整保留(不會觸發 removeChild 崩潰)、行內連結/圖示不消失、所有功能照常。
+ *   - 整行詞綴合併(statLinePass):譯文寫進該行第一個有字的文字節點,其餘文字
+ *     節點清空 — 元素骨架(span/a/img)原地保留。
+ *   - 可逆:每個被改的文字節點存原文 node.__pobOrig;切回英文時走訪即時 DOM
+ *     還原(脫離 DOM 的節點自然被 GC,不另外持有引用 → 無記憶體洩漏)。
+ *   - 自我寫入回音:寫入時記 node.__pobSet;MutationObserver 收到的變更若值
+ *     等於 __pobSet 即是自己造成的,忽略;不等則是網站更新(React 重繪/即時
+ *     資料),重置原文快照並重新翻譯 → 原文永不過期、也不會自我循環重掃。
  */
 
 (() => {
@@ -19,22 +27,24 @@
 
   // 中英切換狀態:true = 顯示中文(預設);false = 還原英文。
   let enabled = true;
-  // 已被翻譯而需在「還原英文」時復原的節點:
-  //   touchedText 存文字節點(其原文記在 node.__pobOrig)
-  //   touchedEls  存被整列換掉 textContent 的容器(其原始 HTML 記在 el.__pobOrigHTML)
-  const touchedText = new Set();
-  const touchedEls = new Set();
-  // 設定文字節點值:首次先保存原文,供日後切回英文還原。
+
+  // 未翻譯字串收集器(資料驅動消英文):走完所有比對仍是英文的字串收進來,
+  // Alt+點右下按鈕 → console 印出 + 複製到剪貼簿,直接餵白名單流程。
+  const misses = new Set();
+  const MISS_CAP = 1000;
+
+  // 設定文字節點值:首次先保存原文(供切回英文還原),並記回音標記。
   function setNodeValue(node, val) {
     if (node.__pobOrig === undefined) node.__pobOrig = node.nodeValue;
     node.nodeValue = val;
-    touchedText.add(node);
+    node.__pobSet = val;
   }
 
   let uiMap = null;          // 小寫標籤 -> 中文
   let nameMap = null;        // 精確英文名 -> 中文
   let multiWordRegex = null; // 多字名稱的子字串比對
   let multiWordLookup = null;// 小寫多字名 -> 中文
+  let multiWordFirst = null; // 多字名稱「首詞」集合(便宜預過濾,免得每個節點都跑大 regex)
   let statTemplates = null;  // 詞綴模板:bucketKey -> [{en, zh}]
   let textStats = null;      // 含文字佔位符(技能名等)的模板:已預編 {re, order, zh}
   let descMap = null;        // 整句描述:正規化英文 -> 中文
@@ -101,7 +111,22 @@
       const escaped = multiWord.map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
       // 前後不可緊鄰英數，避免切到別的單字中間
       multiWordRegex = new RegExp('(?<![A-Za-z0-9])(' + escaped.join('|') + ')(?![A-Za-z0-9])', 'gi');
+      // 首詞集合:節點文字若不含任何多字名的首詞,直接跳過大 regex(7000+ 選項)
+      multiWordFirst = new Set();
+      for (const en of multiWord) {
+        const m = en.toLowerCase().match(/[a-z0-9']+/);
+        if (m) multiWordFirst.add(m[0]);
+      }
     }
+  }
+
+  // 便宜預過濾:文字含任一多字名首詞才值得跑 multiWordRegex
+  function mayContainMultiWord(s) {
+    if (!multiWordFirst) return false;
+    const tokens = s.toLowerCase().match(/[a-z0-9']+/g);
+    if (!tokens) return false;
+    for (const t of tokens) if (multiWordFirst.has(t)) return true;
+    return false;
   }
 
   // 把英文模板(含 {N})編成 { re, order }:逐段 escape 字面、{N} 換成數字捕獲。
@@ -249,7 +274,24 @@
     return false;
   }
 
-  // 翻譯單一文字節點，回傳是否有改動
+  // 截斷字串(表格欄寬不夠時 poe.ninja 以「…」收尾,如「Unique Accessor...」):
+  // 拿省略號前的前綴去比對 UI/名稱字典,「唯一命中」才翻(多個候選歧義就不動)。
+  function lookupTruncated(prefix) {
+    if (!prefix || prefix.length < 4) return null;
+    const p = prefix.toLowerCase();
+    const hits = new Set();
+    for (const [k, zh] of uiMap) {
+      if (k.startsWith(p)) { hits.add(zh); if (hits.size > 1) return null; }
+    }
+    if (hits.size === 1) return hits.values().next().value;
+    for (const [k, zh] of nameMap) {
+      if (k.toLowerCase().startsWith(p)) { hits.add(zh); if (hits.size > 1) return null; }
+    }
+    return hits.size === 1 ? hits.values().next().value : null;
+  }
+
+  // 翻譯單一文字節點，回傳是否有改動。
+  // 注意:所有 raw.replace(trimmed, X) 的 X 一律用函式回傳,避免譯文含 $ 被當特殊替換樣式。
   function translateTextNode(node) {
     const raw = node.nodeValue;
     if (!raw) return false;
@@ -261,21 +303,30 @@
     // 1) UI 標籤:整個節點精確比對(大小寫無關)
     const ui = uiMap.get(trimmed.toLowerCase());
     if (ui) {
-      setNodeValue(node, raw.replace(trimmed, ui));
+      setNodeValue(node, raw.replace(trimmed, () => ui));
       return true;
     }
 
     // 2) 名稱:整個節點精確比對
     const exact = nameMap.get(trimmed);
     if (exact) {
-      setNodeValue(node, raw.replace(trimmed, exact));
+      setNodeValue(node, raw.replace(trimmed, () => exact));
       return true;
+    }
+
+    // 2b) 截斷字串(結尾省略號)→ 字典前綴唯一命中才翻
+    if (/(\.\.\.|…)$/.test(trimmed)) {
+      const z = lookupTruncated(trimmed.replace(/(\.\.\.|…)$/, '').trim());
+      if (z) {
+        setNodeValue(node, raw.replace(trimmed, () => z));
+        return true;
+      }
     }
 
     // 3) 詞綴/數據敘述/整句描述:整行比對
     const line = translateLine(trimmed.replace(/\s+/g, ' '));
     if (line) {
-      setNodeValue(node, raw.replace(trimmed, line));
+      setNodeValue(node, raw.replace(trimmed, () => line));
       return true;
     }
 
@@ -303,14 +354,14 @@
           const restUi = uiMap.get(rest.trim().toLowerCase());
           if (restUi) {
             rest = restUi;
-          } else if (multiWordRegex) {
+          } else if (multiWordRegex && mayContainMultiWord(rest)) {
             // rest 內可能含名稱(如「賦予技能: 等級 18 Herald of Ash」的技能名)→ 一併翻譯
             multiWordRegex.lastIndex = 0;
             rest = rest.replace(multiWordRegex, (m) => multiWordLookup.get(m.toLowerCase()) || m);
           }
         }
         const out = restRaw ? labelZh + '：' + rest : labelZh + cm[2];
-        setNodeValue(node, raw.replace(trimmed, out));
+        setNodeValue(node, raw.replace(trimmed, () => out));
         return true;
       }
     }
@@ -319,21 +370,25 @@
     if (/\d\s+(?:Str|Dex|Int)\b/i.test(trimmed)) {
       const out = translateAttrAbbr(trimmed);
       if (out !== trimmed) {
-        setNodeValue(node, raw.replace(trimmed, out));
+        setNodeValue(node, raw.replace(trimmed, () => out));
         return true;
       }
     }
 
-    // 4) 多字名稱:子字串替換(例如 "Level 93 Spirit Walker")
-    if (multiWordRegex) {
+    // 4) 多字名稱:子字串替換(例如 "Level 93 Spirit Walker");先做便宜首詞預過濾
+    if (multiWordRegex && mayContainMultiWord(trimmed)) {
       multiWordRegex.lastIndex = 0;
-      if (multiWordRegex.test(trimmed)) {
-        multiWordRegex.lastIndex = 0;
-        setNodeValue(node, raw.replace(multiWordRegex, (m) => multiWordLookup.get(m.toLowerCase()) || m));
+      const out = raw.replace(multiWordRegex, (m) => multiWordLookup.get(m.toLowerCase()) || m);
+      if (out !== raw) {
+        setNodeValue(node, out);
         return true;
       }
     }
 
+    // 全部沒命中 → 收進未翻譯收集器(Alt+點按鈕匯出),供白名單流程消化
+    if (misses.size < MISS_CAP && trimmed.length <= 160 && /[A-Za-z]{2,}/.test(trimmed)) {
+      misses.add(trimmed);
+    }
     return false;
   }
 
@@ -346,10 +401,33 @@
     return d;
   }
 
+  // 收集元素子樹內所有文字節點(整行合併用)
+  function lineTextNodes(el) {
+    const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const out = [];
+    let n;
+    while ((n = tw.nextNode())) out.push(n);
+    return out;
+  }
+
+  // shadow DOM:open shadow root 也要翻(TreeWalker 不會自己進去)。
+  const shadowRoots = new Set();
+  function adoptShadow(el) {
+    const sr = el.shadowRoot;
+    if (!sr || shadowRoots.has(sr)) return;
+    shadowRoots.add(sr);
+    if (observer) observer.observe(sr, OBS_OPTS);
+    walk(sr);
+  }
+
   // 詞綴整行:poe.ninja 會把一行詞綴拆成多個節點(關鍵字是獨立 span)。
-  // 這裡在「整行容器元素」層級取英文全文比對模板，命中就把整行換成完整中文。
+  // 這裡在「整行容器元素」層級取英文全文比對模板,命中就把完整中文寫進該行
+  // 第一個有字的文字節點、其餘文字節點清空 — 元素骨架(span/a/img)原地保留,
+  // 不增刪元素 → React 重繪不會崩潰、行內連結與圖示不消失。
   function statLinePass(root) {
     if (!statTemplates) return;
+    const els = [];
+    if (root.nodeType === 1 && !SKIP_TAGS.has(root.tagName)) els.push(root);
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
       acceptNode(el) {
         if (el.__pobTx) return NodeFilter.FILTER_REJECT;
@@ -358,34 +436,74 @@
         return NodeFilter.FILTER_ACCEPT;
       },
     });
-    const els = [];
     let e;
     while ((e = walker.nextNode())) els.push(e);
+    for (const el of els) adoptShadow(el);
     els.sort((a, b) => depth(b) - depth(a)); // 最深(最內層的行)優先
     for (const el of els) {
       if (el.__pobTx || !el.isConnected) continue;    // 已處理 / 已被上層替換而脫離
       if (el.childElementCount === 0) continue;       // 單一文字節點的行 → 交給 translateTextNode
       if (el.querySelector(BLOCK_SEL)) continue;       // 含區塊子元素 → 不是單行
-      // 含圖示/媒體(技能 icon 等)→ 不整列 textContent= 替換(會把 <img> 清掉);
-      // 交給文字節點層翻譯(只動文字、保留 icon)。詞綴行不含圖,故不影響詞綴整行合併。
-      if (el.querySelector('img,svg,canvas,picture,video,image')) continue;
+      // svg/canvas 等內部可能有自己的文字節點(svg <title>/<text>)→ 不做整行合併,
+      // 交給文字節點層。<img> 無內部文字,骨架保留下安全,照常合併。
+      if (el.querySelector('svg,canvas,picture,video')) continue;
       const norm = el.textContent.replace(/\s+/g, ' ').trim();
       if (!norm || !/[A-Za-z]/.test(norm)) continue;
       const zh = translateLine(norm);
       if (zh) {
-        if (el.__pobOrigHTML === undefined) el.__pobOrigHTML = el.innerHTML; // 供切回英文還原
-        el.textContent = zh;     // 整行換成中文(關鍵字 span 一併清掉，不再中英混雜)
+        const nodes = lineTextNodes(el);
+        let target = null;
+        for (const n of nodes) if (n.nodeValue && n.nodeValue.trim()) { target = n; break; }
+        if (!target) continue;
+        setNodeValue(target, zh);
+        processed.add(target);
+        for (const n of nodes) {
+          if (n === target) continue;
+          if (n.nodeValue && n.nodeValue.trim()) setNodeValue(n, '');
+          processed.add(n);
+        }
         el.__pobTx = true;
-        touchedEls.add(el);
       }
     }
+  }
+
+  // ---- 顯示屬性翻譯(title 滑鼠提示 / placeholder 搜尋框 / aria-label / alt)----
+  // 與文字節點同樣可逆:原值存 el.__pobAttrOrig[attr]、回音標記存 el.__pobAttrSet[attr]。
+  const ATTR_LIST = ['title', 'placeholder', 'aria-label', 'alt'];
+  const ATTR_SEL = '[title],[placeholder],[aria-label],[alt]';
+  function translateElAttrs(el) {
+    if (el.closest && el.closest('.' + SKIP_CLASS[0])) return;
+    for (const a of ATTR_LIST) {
+      const v = el.getAttribute(a);
+      if (!v || !/[A-Za-z]/.test(v)) continue;
+      // 已翻譯過(持有原文快照)就跳過;__pobAttrSet 只作 observer 回音辨識,
+      // 不能在這裡當判斷(切英文還原後它是原文,會誤擋重新翻譯)。
+      if (el.__pobAttrOrig && a in el.__pobAttrOrig) continue;
+      const t = v.replace(/\s+/g, ' ').trim();
+      const zh = uiMap.get(t.toLowerCase()) || nameMap.get(t) || translateLine(t);
+      if (zh && zh !== v) {
+        if (!el.__pobAttrOrig) el.__pobAttrOrig = {};
+        if (!(a in el.__pobAttrOrig)) el.__pobAttrOrig[a] = v;
+        el.setAttribute(a, zh);
+        if (!el.__pobAttrSet) el.__pobAttrSet = {};
+        el.__pobAttrSet[a] = zh;
+      }
+    }
+  }
+  function translateAttrs(root) {
+    if (!root.querySelectorAll) return;
+    if (root.nodeType === 1 && root.matches && root.matches(ATTR_SEL)) translateElAttrs(root);
+    for (const el of root.querySelectorAll(ATTR_SEL)) translateElAttrs(el);
   }
 
   function walk(root) {
     if (!uiMap) return;
     ensureButton();
     if (!enabled) return; // 英文模式:不翻譯(按鈕仍保留)
+    root = root || document.body;
+    if (!root) return;
     statLinePass(root);
+    translateAttrs(root);
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
         if (processed.has(node)) return NodeFilter.FILTER_REJECT;
@@ -404,43 +522,86 @@
     }
   }
 
-  // poe.ninja 是 SPA，內容會動態載入 → 用 MutationObserver + debounce 重掃
+  // poe.ninja 是 SPA,內容會動態載入 → MutationObserver + debounce 重掃。
+  // 只重掃變動的子樹(pendingRoots);太多或含 body 才整頁掃。
+  const pendingRoots = new Set();
   let scheduled = false;
   function schedule(target) {
+    pendingRoots.add(target || document.body);
     if (scheduled) return;
     scheduled = true;
     const run = () => {
       scheduled = false;
-      walk(target || document.body);
+      let roots = Array.from(pendingRoots);
+      pendingRoots.clear();
+      if (!document.body) return;
+      if (roots.length > 24 || roots.indexOf(document.body) !== -1) {
+        walk(document.body);
+        return;
+      }
+      roots = roots.filter((r) => r && r.isConnected);
+      // 去掉被其他 root 包含的(走訪外層就涵蓋了)
+      roots = roots.filter((r) => !roots.some((o) => o !== r && o.contains && o.contains(r)));
+      for (const r of roots) walk(r);
     };
     if (window.requestIdleCallback) requestIdleCallback(run, { timeout: 500 });
     else setTimeout(run, 100);
   }
 
+  // 由變動節點往上找到最近的整行合併容器,清旗標讓它能重新合併
+  function resetTxAncestor(node) {
+    for (let a = node && node.parentElement; a; a = a.parentElement) {
+      if (a.__pobTx) { a.__pobTx = false; return; }
+    }
+    if (node && node.nodeType === 1 && node.__pobTx) node.__pobTx = false;
+  }
+
+  let observer = null;
+  const OBS_OPTS = {
+    childList: true,
+    subtree: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: ATTR_LIST,
+  };
   function startObserver() {
-    const observer = new MutationObserver((mutations) => {
-      // 有新增節點或文字變動就重掃(節點已處理過的會被 WeakSet 擋掉)
+    observer = new MutationObserver((mutations) => {
       for (const m of mutations) {
-        if (m.addedNodes.length || m.type === 'characterData') {
-          // 文字變動的節點要重新評估
-          if (m.type === 'characterData') processed.delete(m.target);
-          schedule(document.body);
-          break;
+        if (m.type === 'characterData') {
+          const n = m.target;
+          // 自我寫入回音(值仍是我們寫的)→ 忽略,避免自我循環重掃
+          if (n.__pobSet !== undefined && n.nodeValue === n.__pobSet) continue;
+          // 網站更新了這個節點(React 重繪/即時資料)→ 原文快照已過期,重置後重翻
+          n.__pobOrig = undefined;
+          n.__pobSet = undefined;
+          processed.delete(n);
+          resetTxAncestor(n);
+          schedule(n.parentElement || n.parentNode);
+        } else if (m.type === 'attributes') {
+          const el = m.target;
+          const a = m.attributeName;
+          if (el.__pobAttrSet && el.__pobAttrSet[a] === el.getAttribute(a)) continue; // 回音
+          if (el.__pobAttrOrig && a in el.__pobAttrOrig) delete el.__pobAttrOrig[a]; // 原值過期
+          if (el.__pobAttrSet) delete el.__pobAttrSet[a];
+          schedule(el);
+        } else if (m.addedNodes.length) {
+          // 自己注入的切換按鈕 → 忽略
+          if (m.addedNodes.length === 1 && m.addedNodes[0] === toggleBtn) continue;
+          if (m.target && m.target.__pobTx) m.target.__pobTx = false;
+          resetTxAncestor(m.target);
+          schedule(m.target);
         }
       }
     });
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
+    observer.observe(document.body, OBS_OPTS);
+    for (const sr of shadowRoots) observer.observe(sr, OBS_OPTS);
   }
 
   function loadJson(file) {
     return fetch(chrome.runtime.getURL(file)).then((r) => r.json()).catch(() => null);
   }
 
-  // 名稱字典與詞綴模板:若 background 下載的快取 build 比內建新，才採用快取，避免倒退。
+  // 名稱字典與詞綴模板:若 background 下載的快取 build 比內建新,才採用快取,避免倒退。
   async function loadData() {
     const bundledVer = await loadJson('data/version.json');
     const bundledBuild = (bundledVer && bundledVer.build) || 0;
@@ -482,11 +643,22 @@
     return true; // 預設顯示中文
   }
 
+  // 未翻譯收集器匯出:console 印出 + 盡量複製進剪貼簿
+  function dumpMisses() {
+    const arr = Array.from(misses).sort();
+    const json = JSON.stringify(arr, null, 2);
+    console.log('[PoB Translator] 未翻譯字串 ' + arr.length + ' 筆:\n' + json);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(json);
+    } catch (_) { /* ignore */ }
+  }
+
   let toggleBtn = null;
   function updateButton() {
     if (!toggleBtn) return;
     toggleBtn.textContent = enabled ? 'EN' : '中';
-    toggleBtn.title = enabled ? '切換為英文(顯示原文)' : '切換為中文';
+    toggleBtn.title = (enabled ? '切換為英文(顯示原文)' : '切換為中文') + '；Alt+點擊:匯出未翻譯字串';
+    toggleBtn.setAttribute('aria-label', enabled ? '切換為英文' : '切換為中文');
   }
   function ensureButton() {
     if (!document.body) return;
@@ -495,6 +667,7 @@
       toggleBtn = document.createElement('div');
       toggleBtn.className = 'pob-zh-toggle';
       toggleBtn.setAttribute('role', 'button');
+      toggleBtn.setAttribute('tabindex', '0');
       toggleBtn.style.cssText = [
         'position:fixed', 'right:16px', 'bottom:16px', 'z-index:2147483647',
         'min-width:40px', 'height:40px', 'padding:0 12px', 'box-sizing:border-box',
@@ -505,31 +678,60 @@
       ].join(';');
       toggleBtn.addEventListener('mouseenter', () => { toggleBtn.style.opacity = '1'; });
       toggleBtn.addEventListener('mouseleave', () => { toggleBtn.style.opacity = '0.9'; });
-      toggleBtn.addEventListener('click', onToggle);
+      toggleBtn.addEventListener('click', (e) => {
+        if (e.altKey) { dumpMisses(); return; }
+        onToggle();
+      });
+      toggleBtn.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); }
+      });
       updateButton();
     }
     document.body.appendChild(toggleBtn);
   }
 
-  // 切回英文:把所有翻譯過的節點還原成原文。
+  // 切回英文:走訪「即時 DOM」還原所有帶原文快照的節點/屬性。
+  // 不另外持有節點集合 → 已脫離 DOM 的節點自然被 GC(SPA 長時間瀏覽不洩漏),
+  // 且脫離的節點本來就不需要還原。
   function restoreEnglish() {
-    for (const n of touchedText) {
-      if (n.__pobOrig !== undefined) n.nodeValue = n.__pobOrig;
-      processed.delete(n); // 之後切回中文時可重新翻譯
+    const roots = [document.body];
+    for (const sr of shadowRoots) if (sr.host && sr.host.isConnected) roots.push(sr);
+    for (const root of roots) {
+      const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = tw.nextNode())) {
+        if (n.__pobOrig !== undefined) {
+          n.nodeValue = n.__pobOrig;
+          n.__pobSet = n.__pobOrig; // 還原也是自我寫入,留回音標記
+          n.__pobOrig = undefined;
+          processed.delete(n); // 之後切回中文時可重新翻譯
+        }
+      }
+      const ew = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+      let el;
+      while ((el = ew.nextNode())) {
+        if (el.__pobTx) el.__pobTx = false;
+        if (el.__pobAttrOrig) {
+          for (const a of Object.keys(el.__pobAttrOrig)) {
+            el.setAttribute(a, el.__pobAttrOrig[a]);
+            if (el.__pobAttrSet) el.__pobAttrSet[a] = el.__pobAttrOrig[a];
+          }
+          el.__pobAttrOrig = undefined;
+        }
+      }
     }
-    for (const el of touchedEls) {
-      if (el.__pobOrigHTML !== undefined) { el.innerHTML = el.__pobOrigHTML; el.__pobTx = false; }
-    }
-    touchedText.clear();
-    touchedEls.clear();
   }
 
   function onToggle() {
     enabled = !enabled;
     persistPref(enabled);
     updateButton();
-    if (enabled) walk(document.body); // 切回中文:重新翻譯整頁
-    else restoreEnglish();            // 切到英文:還原原文
+    if (enabled) {
+      walk(document.body); // 切回中文:重新翻譯整頁
+      for (const sr of shadowRoots) if (sr.host && sr.host.isConnected) walk(sr);
+    } else {
+      restoreEnglish();    // 切到英文:還原原文
+    }
   }
 
   async function init() {
