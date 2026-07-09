@@ -22,8 +22,8 @@
 
   // 不進入翻譯的標籤(避免動到輸入框、程式碼、PoB 代碼等)
   const SKIP_TAGS = new Set(['INPUT', 'TEXTAREA', 'SCRIPT', 'STYLE', 'CODE', 'PRE', 'SELECT', 'OPTION']);
-  // 不進入翻譯的 class(本擴充自己注入的元素,如中英切換按鈕)
-  const SKIP_CLASS = ['pob-zh-toggle'];
+  // 不進入翻譯的 class(本擴充自己注入的元素,如中英切換按鈕、中文搜尋框)
+  const SKIP_CLASS = ['pob-zh-toggle', 'pob-zh-search'];
 
   // 中英切換狀態:true = 顯示中文(預設);false = 還原英文。
   let enabled = true;
@@ -47,6 +47,7 @@
 
   let uiMap = null;          // 小寫標籤 -> 中文
   let nameMap = null;        // 精確英文名 -> 中文
+  let reverseNameMap = null; // 中文名 -> 英文名(搜尋接管用:讓中文項也能用英文搜)
   let keepNames = null;      // 官方保留英文的名稱(整行)→ 不得翻其中任何片段(防「Legacy of 鑽石」)
   let multiWordRegex = null; // 多字名稱的子字串比對
   let multiWordLookup = null;// 小寫多字名 -> 中文
@@ -126,9 +127,12 @@
     }
 
     nameMap = new Map();
+    reverseNameMap = new Map();
     const multiWord = [];
     for (const [en, zh] of Object.entries(dict.names || {})) {
       nameMap.set(en, zh);
+      // 中文 -> 英文(第一個出現的英文為準;搜尋接管讓中文項也可用英文搜)
+      if (!reverseNameMap.has(zh)) reverseNameMap.set(zh, en);
       if (en.includes(' ') && en.length >= 5) multiWord.push(en);
     }
 
@@ -923,6 +927,9 @@
 
   async function init() {
     try {
+      // 供 MAIN world 的 search-inject.js 取用擴充資源 URL(讀 React fiber 需在
+      // main world;它自 fetch 本擴充內建字典來翻譯/過濾搜尋清單)
+      try { document.documentElement.setAttribute('data-pob-base', chrome.runtime.getURL('')); } catch (_) { /* ignore */ }
       enabled = await loadPref();
       const { dict, ui, stats } = await loadDicts();
       buildIndexes(dict, ui, stats);
