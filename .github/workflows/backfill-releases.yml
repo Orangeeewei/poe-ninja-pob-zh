@@ -1,0 +1,63 @@
+name: Backfill releases
+
+# 回填歷史版本的 tag 與 GitHub Release(一次性/可重跑;已存在的 tag/Release 會略過)。
+# 每個版本以「版本=commit」指定:在該 commit 建 tag,用該 commit 的原始碼重新打包(用現行的打包腳本),
+# 說明取自現行 README 更新紀錄。回填的 Release 不會搶走「Latest」標記。
+on:
+  workflow_dispatch:
+    inputs:
+      versions:
+        description: '版本=commit 清單(空白分隔)'
+        required: true
+        default: '2.0.0=c4342d7 2.0.1=11e1c43 2.1.1=cf63c3e 2.2.0=34158d8 2.3.0=13a0758'
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/backfill-releases.yml
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 回填
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSIONS: ${{ inputs.versions || '2.0.0=c4342d7 2.0.1=11e1c43 2.1.1=cf63c3e 2.2.0=34158d8 2.3.0=13a0758' }}
+        run: |
+          set -e
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p out
+          for pair in $VERSIONS; do
+            VER="${pair%%=*}"; SHA="${pair#*=}"
+            echo "=== v$VER @ $SHA"
+            if ! git rev-parse -q --verify "refs/tags/v$VER" >/dev/null; then
+              git tag -a "v$VER" "$SHA" -m "v$VER"
+              git push origin "v$VER"
+            else
+              echo "tag v$VER 已存在"
+            fi
+            if gh release view "v$VER" >/dev/null 2>&1; then
+              echo "Release v$VER 已存在,略過"; continue
+            fi
+            rm -rf "src-$VER"
+            git worktree add -f "src-$VER" "$SHA" >/dev/null
+            node tools/pack-extension.mjs --root "src-$VER" --out out
+            node tools/release-notes.mjs "$VER" > "notes-$VER.md"
+            gh release create "v$VER" "out/poe-ninja-pob-zh-$VER.zip" \
+              --title "poe.ninja PoE2 中文化 v$VER" \
+              --notes-file "notes-$VER.md" \
+              --latest=false
+            git worktree remove --force "src-$VER"
+          done
