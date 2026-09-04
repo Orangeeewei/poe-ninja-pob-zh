@@ -50,6 +50,7 @@ export const ROUTED = [
   { table: 'KeywordPopups', route: 'ui', columns: ['Term'] },  // 關鍵字名詞(Physical Damage→物理傷害)
   { table: 'Ascendancy', route: 'ui', columns: ['Name'] },     // 昇華職業名(Deadeye→銳眼)
   { table: 'CharacterPanelStats', route: 'ui', columns: '*' }, // 角色面板標籤(Life→生命)
+  { table: 'GrantedEffectLabels', route: 'ui', columns: ['Text'] }, // 寶石 tooltip 分頁/段落標題(Explosion→爆炸、Buff→增益效果;API gemTabs[].pages[].skillName)
 
   // ---- names(專有名詞,保守,因多字名走子字串比對有誤判風險)----
   { table: 'BaseItemTypes', route: 'name', columns: ['Name'] },        // 底材名
@@ -80,6 +81,8 @@ export const UI_GENERIC_DENY = new Set([
   'reflection', 'punishment', 'discipline', 'immunity', 'converted', 'spectral',
   // poe.ninja 站方 UI 自身會出現的字(Meta 流行度、Gain 漲幅欄)→ 遊戲詞義會亂翻
   'meta', 'gain', 'gains',
+  // GrantedEffectLabels 的內部顯示旗標(Hidden/Shown)→ 非玩家可見標題,且在站方 UI 可能單獨出現
+  'hidden', 'shown',
 ]);
 
 // 從 ROUTED 取某 route 的 [{table, columns}](columns 為 '*' 或欄名陣列)。

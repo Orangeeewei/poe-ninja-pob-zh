@@ -47,6 +47,11 @@ jobs:
           node tools/build-dict.mjs
           node tools/data-export/build-names.mjs
 
+      # 腐化精髓的寫死詞綴只有 poe2db 有 EN/TW 對照(.csd 沒有);失敗就沿用既有資料
+      - name: 精髓詞綴(poe2db)
+        continue-on-error: true
+        run: node tools/build-essence-mods.mjs
+
       - name: 重建描述字典(通貨/技能說明/支援寶石)
         working-directory: tools/data-export
         run: node build-descriptions.mjs
@@ -66,25 +71,12 @@ jobs:
       - name: 重算版本檔
         run: node tools/build-version.mjs
 
-      # 7) 有變動才 commit
-      - name: 提交更新
-        run: |
-          if [[ -n "$(git status --porcelain data/)" ]]; then
-            git config user.name  "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add data/dict.json data/stat-templates.json data/version.json
-            git commit -m "chore: 自動更新 PoE2 翻譯資料(patch ${{ steps.patch.outputs.version }})"
-            git push
-            echo "已更新並推送。"
-          else
-            echo "資料沒有變動，略過。"
-          fi
-
-      # 8) 稽核(資訊用,放最後 + continue-on-error → 絕不影響每日 build)。
-      #    全表掃描,把「有官方繁中卻還沒對接」的欄位印在 log;每次改版看一眼,
-      #    若有新出現、poe.ninja 會顯示的相關欄位,人工加進 relevance.mjs 即可。
-      - name: 稽核未對接的中文欄位(資訊)
-        if: always()
+      # 7) 稽核(continue-on-error → 絕不影響每日 build)。全表掃描,把「有官方繁中卻還沒
+      #    對接」的欄位寫成 tools/data-export/audit-report.md 隨資料一起 commit:
+      #    沒人會看 Actions log,但 repo 裡的檔案 diff 看得到(2026-09-04 起;GrantedEffectLabels
+      #    寶石分頁標題就是這樣漏了三個月)。若報告出現 poe.ninja 會顯示的欄位 → 加進 relevance.mjs。
+      #    gen-config --all 會強制重抓 schema(舊 schema 對新 patch 會讓匯出中止)。
+      - name: 稽核未對接的中文欄位(寫報告)
         continue-on-error: true
         working-directory: tools/data-export
         env:
@@ -92,4 +84,19 @@ jobs:
         run: |
           node gen-config.mjs --all
           node node_modules/pathofexile-dat/dist/cli/run.js
-          node audit-coverage.mjs
+          node audit-coverage.mjs --out audit-report.md
+
+      # 8) 有變動才 commit(資料 + 稽核報告)
+      - name: 提交更新
+        run: |
+          if [[ -n "$(git status --porcelain data/ tools/data-export/audit-report.md)" ]]; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add data/dict.json data/stat-templates.json data/version.json
+            git add -f tools/data-export/audit-report.md 2>/dev/null || true
+            git commit -m "chore: 自動更新 PoE2 翻譯資料(patch ${{ steps.patch.outputs.version }})"
+            git push
+            echo "已更新並推送。"
+          else
+            echo "資料沒有變動，略過。"
+          fi

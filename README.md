@@ -68,12 +68,25 @@ node gen-config.mjs                                   # 動態產生匯出 confi
 node node_modules/pathofexile-dat/dist/cli/run.js     # 匯出官方資料表(英+繁中)
 node build-stats.mjs                                  # 詞綴模板
 cd ../.. && node tools/build-dict.mjs                 # POEDB 名稱
+node tools/build-essence-mods.mjs                     # POEDB 精髓詞綴(腐化精髓寫死句,.csd 沒有)
 cd tools/data-export
 node build-names.mjs && node build-descriptions.mjs && node build-ui.mjs
 cd ../.. && node tools/build-version.mjs              # 版本檔
 # 測試:cd tools/data-export && node test-stats.mjs && node test-screenshots.mjs && node test-modules.mjs
 # 稽核未對接的中文欄位:node gen-config.mjs --all && <匯出> && node audit-coverage.mjs
 ```
+
+### 畫面上還有零星英文?(標準流程)
+
+1. poe.ninja 右下角按鈕 **Alt+點擊** → 未翻譯字串以 JSON 陣列印在 Console 並複製到剪貼簿
+   (整行合併失敗的詞綴會收「整行英文」,不只零碎片段)。存成 `misses.json`。
+2. `cd tools/data-export && node find-source.mjs misses.json` → 逐字串回報官方來源:
+   - **成品資料已含** → 引擎比對/DOM 結構問題,改 `translator.js` 並在 `test-screenshots.mjs` 補該 DOM。
+   - **官方表/.csd 有、成品沒有** → 對接:把該表加進 `relevance.mjs` 的 ROUTED,或修 build 規則。
+   - **都找不到** → 站方文字(手工 `ui-labels.json`)、需擴大匯出(`gen-config.mjs --all`)、或官方無繁中(`keepEnglish`)。
+   另存的頁面或抓下來的 DOM 片段可用 `node test-saved-page.mjs page.htm --json misses.json` 離線跑真正的引擎,
+   直接產出殘留清單(注意:瀏覽器「另存網頁」只有 SSR 外殼,內容要從開發者工具複製 `<main>` 的 outerHTML)。
+3. CI 每日另產 `tools/data-export/audit-report.md`:列出「有官方繁中但尚未路由」的欄位,看 diff 即可發現新模塊。
 
 ## 打包上架
 
@@ -91,11 +104,33 @@ node tools/pack-extension.mjs        # 產生 dist/poe-ninja-pob-zh-<version>.zi
 | `manifest.json` | 擴充宣告(MV3) |
 | `translator.js` | 翻譯引擎(content script) |
 | `background.js` | service worker:每日檢查並下載最新翻譯資料 |
+| `search-inject.js` | 側欄篩選清單中文搜尋(MAIN world) |
 | `data/` | 字典(`dict.json`)、詞綴模板(`stat-templates.json`)、UI 標籤、版本檔 |
 | `tools/` | 資料管線與測試(不打包進擴充) |
 | `.github/workflows/` | 每日自動更新 CI |
 
 ## 更新紀錄
+
+### 2.4.0(2026-09-04)
+
+**零星英文殘留:從「截圖修一個」改成「找根因、可重複的流程」**
+
+- 寶石 tooltip 段落標題(Explosion/Buff/Projectile…202 筆)對接官方表 `GrantedEffectLabels`。
+- 多行詞綴模板(英文兩行、繁中一行)補上整段版本,修正「100% of Explosion 物理 傷害 Converted to…」類半翻行;
+  引擎把 `<br>` 與 pre-line 換行一律視為空白。
+- 精髓:「A, B, C or D: 詞綴」前綴清單(鞋子、手套、頭盔或飾品)、`EssenceCategory*` 官方類別名、
+  腐化精髓寫死句(裂痕「+20%最大品質」、譫妄「分配一個隨機核心天賦」)改由 poe2db 對照(`tools/build-essence-mods.mjs`)。
+- 傳奇物品:站方新括號「⟦ ⟧」、類別行文化前綴(艾茲麥法杖/卡爾葛藥劑/瓦爾長矛)、屬性行「物理傷害：(140-208)-(210-311)」、
+  負數範圍「(-10-10) to Maximum Rage」、模板字面「+{0}」(蛇巢連鎖)、藥劑屬性行逐字巢狀 span。
+- 資料管線修正:.csd 區塊空白行讓解析中斷(藥劑符文保護回復/守護模板消失)、無編號佔位符 `{}`(聖物試煉等級)、
+  舊 schema 讓稽核匯出中止。CI 稽核報告改為隨資料一起 commit(`tools/data-export/audit-report.md`)。
+- 新工具:`find-source.mjs`(未翻譯字串 → 官方來源定位)、`test-saved-page.mjs`(離線對真實 DOM 跑引擎);
+  收集器改收「整行原文」。站方 UI:Exchange→交換、Price history→價格歷史、DPS→每秒傷害。
+- 保留英文(查無官方句):譫妄碑牌「Delirium in Map increases … with distance from the mirror」。
+
+### 2.3.0(2026-07-09)
+
+- 側欄篩選清單支援中文搜尋(自繪清單,MAIN world 讀取列表資料)。
 
 ### 2.2.0(2026-06-10)
 

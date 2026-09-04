@@ -2,7 +2,7 @@
  * pack-extension.mjs — 打包成可上傳 Chrome Web Store 的 zip(只含擴充必要檔)。
  *
  * 產出:dist/poe-ninja-pob-zh-<version>.zip,內容物在 zip 根目錄(manifest.json 在最上層)。
- * 只含:manifest.json、background.js、translator.js、data/*.json、icons/*.png。
+ * 只含:manifest.json、background.js、translator.js、search-inject.js、data/*.json、icons/*.png。
  * 不含:tools/、.github/、README、docs、CLAUDE.md、HANDOFF、node_modules、.git…
  *
  * 自帶 ZIP 寫入器(deflate + 正斜線路徑),不依賴外部 zip/PowerShell → 跨平台、
@@ -24,7 +24,7 @@ const zipName = `poe-ninja-pob-zh-${version}.zip`;
 // 收集要打包的檔(zip 內路徑一律正斜線、相對根目錄)
 const files = [];
 const addFile = (zipPath, absPath) => files.push({ zipPath, data: readFileSync(absPath) });
-for (const f of ['manifest.json', 'background.js', 'translator.js']) addFile(f, path.join(root, f));
+for (const f of ['manifest.json', 'background.js', 'translator.js', 'search-inject.js']) addFile(f, path.join(root, f));
 for (const f of readdirSync(path.join(root, 'data')).sort()) {
   if (f.endsWith('.json')) addFile(`data/${f}`, path.join(root, 'data', f));
 }

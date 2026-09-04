@@ -133,6 +133,7 @@ async function main() {
   };
   if (existing.descriptions) out.descriptions = existing.descriptions; // 保留(build-descriptions 產)
   if (existing.uiAuto) out.uiAuto = existing.uiAuto;                   // 保留(build-ui 產)
+  if (existing.essenceMods) out.essenceMods = existing.essenceMods;    // 保留(build-essence-mods 產)
 
   await mkdir(dirname(OUT), { recursive: true });
   await writeFile(OUT, JSON.stringify(out, null, 2), 'utf8');

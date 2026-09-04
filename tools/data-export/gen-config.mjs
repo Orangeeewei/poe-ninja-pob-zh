@@ -35,7 +35,9 @@ const configPath = path.join(here, 'config.json');
 
 const FALLBACK_PATCH = '4.5.1.1.2';
 const ALL = process.argv.includes('--all');
-const REFRESH = process.argv.includes('--refresh-schema');
+// --all(稽核模式)一律重新下載 schema:本地快取的舊 schema 對新 patch 會列出已不存在的欄
+// (實例:HeistObjectives.Name)→ pathofexile-dat 匯出到一半 process.exit(1),稽核根本跑不完。
+const REFRESH = process.argv.includes('--refresh-schema') || process.argv.includes('--all');
 
 // 取得 schema:本地有 cache(且未要求 refresh)就讀檔,否則從 SCHEMA_URL 下載並 cache。
 async function loadSchema() {
