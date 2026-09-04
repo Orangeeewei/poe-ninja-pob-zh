@@ -35,7 +35,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSIONS: ${{ inputs.versions || '2.0.0=c4342d7 2.0.1=11e1c43 2.1.1=cf63c3e 2.2.0=34158d8 2.3.0=13a0758' }}
         run: |
-          set -e
+          set -ex
+          exec > >(tee -a backfill.log) 2>&1
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           mkdir -p out
@@ -61,3 +62,9 @@ jobs:
               --latest=false
             git worktree remove --force "src-$VER"
           done
+
+      # 公開 repo 不登入看不到 log,但 job summary 看得到 → 把完整輸出貼進去方便除錯
+      - name: 輸出到 summary
+        if: always()
+        run: |
+          { echo '```'; cat backfill.log 2>/dev/null | tail -200; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
