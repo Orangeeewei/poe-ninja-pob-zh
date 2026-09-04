@@ -97,6 +97,10 @@ node tools/pack-extension.mjs        # 產生 dist/poe-ninja-pob-zh-<version>.zi
 把產生的 zip 上傳到 [Chrome 開發人員主控台](https://chrome.google.com/webstore/devconsole)。
 商店表單文案見 [`docs/STORE-LISTING.md`](docs/STORE-LISTING.md)。
 
+**GitHub Release 自動發版**:`manifest.json` 的版本號改了並推上 main,Actions(`release.yml`)會自動建 tag
+`v<version>`、打包並發 Release(附 zip,說明取自下方「更新紀錄」該版段落)。發新版只要:改版本號 →
+在更新紀錄加一段 `### x.y.z(日期)` → push。版本沒變的 commit(每日資料更新)不會發版。
+
 ## 檔案
 
 | 檔案 | 用途 |
