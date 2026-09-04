@@ -1,8 +1,8 @@
 name: Backfill releases
 
-# 回填歷史版本的 tag 與 GitHub Release(一次性/可重跑;已存在的 tag/Release 會略過)。
-# 每個版本以「版本=commit」指定:在該 commit 建 tag,用該 commit 的原始碼重新打包(用現行的打包腳本),
-# 說明取自現行 README 更新紀錄。回填的 Release 不會搶走「Latest」標記。
+# 回填歷史版本的 GitHub Release(一次性/可重跑;已存在的 Release 會略過)。
+# 每個版本以「版本=commit」指定:用該 commit 的原始碼重新打包(用現行的打包腳本),說明取自現行 README 更新紀錄。
+# tag 請先在本機建好推上去(git tag -a vX.Y.Z <commit> && git push origin vX.Y.Z);回填的 Release 不會搶走「Latest」。
 on:
   workflow_dispatch:
     inputs:
@@ -43,11 +43,13 @@ jobs:
           for pair in $VERSIONS; do
             VER="${pair%%=*}"; SHA="${pair#*=}"
             echo "=== v$VER @ $SHA"
-            if ! git rev-parse -q --verify "refs/tags/v$VER" >/dev/null; then
-              git tag -a "v$VER" "$SHA" -m "v$VER"
-              git push origin "v$VER"
-            else
+            # tag 由本機推(GITHUB_TOKEN 對「工作流程檔與 main 不同的舊 commit」建 tag 會被 workflows 權限擋下);
+            # 沒有 tag 時改由 Release API 以 --target 建立
+            TARGET=""
+            if git rev-parse -q --verify "refs/tags/v$VER" >/dev/null; then
               echo "tag v$VER 已存在"
+            else
+              TARGET="--target $(git rev-parse "$SHA")"
             fi
             if gh release view "v$VER" >/dev/null 2>&1; then
               echo "Release v$VER 已存在,略過"; continue
@@ -59,7 +61,7 @@ jobs:
             gh release create "v$VER" "out/poe-ninja-pob-zh-$VER.zip" \
               --title "poe.ninja PoE2 中文化 v$VER" \
               --notes-file "notes-$VER.md" \
-              --latest=false
+              --latest=false $TARGET
             git worktree remove --force "src-$VER"
           done
 
