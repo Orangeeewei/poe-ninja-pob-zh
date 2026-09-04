@@ -101,6 +101,12 @@ node tools/pack-extension.mjs        # 產生 dist/poe-ninja-pob-zh-<version>.zi
 `v<version>`、打包並發 Release(附 zip,說明取自下方「更新紀錄」該版段落)。發新版只要:改版本號 →
 在更新紀錄加一段 `### x.y.z(日期)` → push。版本沒變的 commit(每日資料更新)不會發版。
 
+**回填舊版 Release**(`backfill-releases.yml`,手動觸發):先在本機建 tag 並推上去
+(`git tag -a v2.0.0 <commit> -m v2.0.0 && git push origin v2.0.0`;Actions 內建 token 對「工作流程檔與 main 不同的舊 commit」
+建 tag 會被 workflows 權限擋下,所以 tag 要由本機推),再到 Actions 執行 Backfill releases,填入「版本=commit」清單。
+流程會用該 commit 的原始碼重新打包並建 Release,不搶「Latest」。已回填:v2.0.0 c4342d7、v2.0.1 11e1c43、
+v2.1.1 cf63c3e、v2.2.0 34158d8、v2.3.0 13a0758。
+
 ## 檔案
 
 | 檔案 | 用途 |
