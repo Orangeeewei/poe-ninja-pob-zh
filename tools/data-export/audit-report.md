@@ -1,6 +1,6 @@
 # 官方繁中欄位對接稽核
 
-patch:4.5.5.1
+patch:4.5.5.1.5
 
 由 CI 每日自動產生(`audit-coverage.mjs --out`)。「未對接」= 該欄有官方繁中但 `relevance.mjs` 尚未路由;
 若某欄的內容 poe.ninja 會顯示,把它加進 `relevance.mjs` 的 ROUTED 即可,下次 build 自動納入。
