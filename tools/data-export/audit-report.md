@@ -7,7 +7,7 @@ patch:4.5.5.1.5
 
 ```
 
-=== 有官方繁中的 string 欄:249 個(curated 34 / 未對接 215) ===
+=== 有官方繁中的 string 欄:250 個(curated 34 / 未對接 216) ===
 
 --- 未對接、且以「句子」為主(最該納入 descriptions,exact-match 安全)---
 24635 譯 | 句22003 名 989 短1643 | NPCTextAudio.Text
@@ -94,6 +94,9 @@ patch:4.5.5.1.5
   122 譯 | 句 116 名   5 短   1 | UltimatumModifiers.Name
         e.g. Reduced Recovery → 減少回復
         e.g. Reduced Recovery II → 減少回復 II
+  122 譯 | 句 122 名   0 短   0 | UltimatumModifiers.Description
+        e.g. 20% reduced Life, Mana, and Energy Shield Recovery Rate → 減少 20% 生命、魔力和能量護盾恢復率
+        e.g. 35% reduced Life, Mana, and Energy Shield Recovery Rate → 減少 35% 生命、魔力和能量護盾恢復率
   116 譯 | 句  81 名  25 短  10 | SanctumPersistentEffects.Name
         e.g. Honed Claws → 磨礪之爪
         e.g. Fright Mask → 恐懼面具
@@ -467,5 +470,5 @@ patch:4.5.5.1.5
     5 譯 | 句   0 名   0 短   5 | BindableVirtualKeys.Id
 
 === 總計未對接句子型欄位的可譯句數合計 ===
-未對接欄位的「句子」可譯數合計約 84290
+未對接欄位的「句子」可譯數合計約 84412
 ```
