@@ -7,7 +7,7 @@ patch:4.5.5.1.6
 
 ```
 
-=== 有官方繁中的 string 欄:250 個(curated 34 / 未對接 216) ===
+=== 有官方繁中的 string 欄:251 個(curated 34 / 未對接 217) ===
 
 --- 未對接、且以「句子」為主(最該納入 descriptions,exact-match 安全)---
 24635 譯 | 句22003 名 989 短1643 | NPCTextAudio.Text
@@ -361,6 +361,9 @@ patch:4.5.5.1.6
     9 譯 | 句   9 名   0 短   0 | Incursion2Medallions.Description
         e.g. Use to prevent the next Destabilisation of a Room → 防止下一次房間不穩定
         e.g. Use to reroll a Restricted Room in the Temple → 重骰神廟內的限制房間
+    9 譯 | 句   5 名   3 短   1 | RelicStashTabSubGroup.Name
+        e.g. Locker → 鎖櫃
+        e.g. Urn Relic → 古甕聖物
     8 譯 | 句   8 名   0 短   0 | BattlePassRewards.RewardTitle
         e.g. Apocalypse Mystery Box → 天啟神秘寶箱
         e.g. Igneous Emperor Boots → 腳部外觀：火炎帝王
@@ -470,5 +473,5 @@ patch:4.5.5.1.6
     5 譯 | 句   0 名   0 短   5 | BindableVirtualKeys.Id
 
 === 總計未對接句子型欄位的可譯句數合計 ===
-未對接欄位的「句子」可譯數合計約 84412
+未對接欄位的「句子」可譯數合計約 84417
 ```
