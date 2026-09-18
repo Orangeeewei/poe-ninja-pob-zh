@@ -1,6 +1,6 @@
 # 官方繁中欄位對接稽核
 
-patch:4.5.5.2
+patch:4.5.5.3
 
 由 CI 每日自動產生(`audit-coverage.mjs --out`)。「未對接」= 該欄有官方繁中但 `relevance.mjs` 尚未路由;
 若某欄的內容 poe.ninja 會顯示,把它加進 `relevance.mjs` 的 ROUTED 即可,下次 build 自動納入。
@@ -19,31 +19,31 @@ patch:4.5.5.2
  9236 譯 | 句9027 名  94 短 115 | NPCTalkDialogueTextAudio.Text
         e.g. You know why I did it—to save our people. → 你知道我為什麼要這麼做──為了拯救我們的族人。
         e.g. You think I don't know that? → 你以為我不知道？
- 8160 譯 | 句7554 名 515 短  91 | MtxTypes.Name
+ 8183 譯 | 句7577 名 515 短  91 | MtxTypes.Name
         e.g. Pet Upgrade Scroll → 寵物升級卷軸
         e.g. Pet Convert to Normal Scroll → 寵物轉化卷軸
- 7927 譯 | 句7926 名   0 短   1 | MtxTypes.Description1
+ 7952 譯 | 句7951 名   0 短   1 | MtxTypes.Description1
         e.g. Can be used with an Upgradeable Pet → 可以用於可升級的寵物
         e.g. Can be used with an Upgradeable Pet → 可以用於可升級的寵物
- 5389 譯 | 句3423 名1957 短   9 | MtxTypes.Type
+ 5395 譯 | 句3429 名1957 短   9 | MtxTypes.Type
         e.g. Weapon Effect → 武器特效
         e.g. Weapon Modifier → 武器效果
  2762 譯 | 句1983 名 183 短 596 | MonsterVarieties.Name
         e.g. ANY MONSTER → 任意怪物
         e.g. Feral Primate → 野性靈長類
- 2153 譯 | 句1342 名 273 短 538 | NPCTalk.DialogueOption
+ 2156 譯 | 句1345 名 273 短 538 | NPCTalk.DialogueOption
         e.g. Introduction → 介紹
         e.g. Captain Fairgraves → 費爾船長
- 1457 譯 | 句1445 名  12 短   0 | QuestStates.Message
+ 1469 譯 | 句1457 名  12 短   0 | QuestStates.Message
         e.g. Quest Complete → 任務完成
         e.g. Take Renly's reward → 領取倫利的獎勵
- 1437 譯 | 句1436 名   1 短   0 | QuestStates.Text
+ 1449 譯 | 句1448 名   1 短   0 | QuestStates.Text
         e.g. Quest Complete - You have slain the Bloated Miller and received a reward from Renly. → 任務完
         e.g. Renly has offered you a reward for slaying the Bloated Miller. Take it. → 倫利要給你擊殺浮腫米勒的獎勵，收
- 1394 譯 | 句1387 名   7 短   0 | QuestStates.MapPinsText
+ 1406 譯 | 句1399 名   7 短   0 | QuestStates.MapPinsText
         e.g. Take Renly's reward → 領取倫利的獎勵
         e.g. Talk to the Blacksmith → 和鐵匠交談
-  964 譯 | 句 533 名  54 短 377 | NPCs.Name
+  965 譯 | 句 534 名  54 短 377 | NPCs.Name
         e.g. Oba → 歐霸
         e.g. Krillson, Master Fisherman → 釣魚大師克里爾森
   817 譯 | 句 676 名  65 短  76 | ClientStrings2.Text
@@ -432,7 +432,7 @@ patch:4.5.5.2
 
 --- 未對接、以「單字短 UI」為主(高風險,需謹慎)---
  1016 譯 | 句 354 名 107 短 555 | Chests.Name
-  863 譯 | 句 308 名  30 短 525 | NPCs.ShortName
+  864 譯 | 句 309 名  30 短 525 | NPCs.ShortName
   175 譯 | 句   7 名  12 短 156 | PassiveSkillFilterOptions.Filters
   175 譯 | 句   7 名  12 短 156 | PassiveSkillFilterOptions.Name
   134 譯 | 句   9 名   6 短 119 | HideoutDoodadCategory.Name
@@ -473,5 +473,5 @@ patch:4.5.5.2
     5 譯 | 句   0 名   0 短   5 | BindableVirtualKeys.Id
 
 === 總計未對接句子型欄位的可譯句數合計 ===
-未對接欄位的「句子」可譯數合計約 84503
+未對接欄位的「句子」可譯數合計約 84600
 ```
