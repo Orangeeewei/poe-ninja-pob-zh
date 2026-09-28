@@ -1,6 +1,6 @@
 # 官方繁中欄位對接稽核
 
-patch:4.5.5.3
+patch:4.5.5.4
 
 由 CI 每日自動產生(`audit-coverage.mjs --out`)。「未對接」= 該欄有官方繁中但 `relevance.mjs` 尚未路由;
 若某欄的內容 poe.ninja 會顯示,把它加進 `relevance.mjs` 的 ROUTED 即可,下次 build 自動納入。
@@ -19,10 +19,10 @@ patch:4.5.5.3
  9236 譯 | 句9027 名  94 短 115 | NPCTalkDialogueTextAudio.Text
         e.g. You know why I did it—to save our people. → 你知道我為什麼要這麼做──為了拯救我們的族人。
         e.g. You think I don't know that? → 你以為我不知道？
- 8183 譯 | 句7577 名 515 短  91 | MtxTypes.Name
+ 8178 譯 | 句7572 名 515 短  91 | MtxTypes.Name
         e.g. Pet Upgrade Scroll → 寵物升級卷軸
         e.g. Pet Convert to Normal Scroll → 寵物轉化卷軸
- 7952 譯 | 句7951 名   0 短   1 | MtxTypes.Description1
+ 7948 譯 | 句7947 名   0 短   1 | MtxTypes.Description1
         e.g. Can be used with an Upgradeable Pet → 可以用於可升級的寵物
         e.g. Can be used with an Upgradeable Pet → 可以用於可升級的寵物
  5395 譯 | 句3429 名1957 短   9 | MtxTypes.Type
@@ -473,5 +473,5 @@ patch:4.5.5.3
     5 譯 | 句   0 名   0 短   5 | BindableVirtualKeys.Id
 
 === 總計未對接句子型欄位的可譯句數合計 ===
-未對接欄位的「句子」可譯數合計約 84600
+未對接欄位的「句子」可譯數合計約 84591
 ```
