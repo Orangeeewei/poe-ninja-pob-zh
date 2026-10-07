@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: '22'
 
-      # 1) 偵測目前 PoE2 的 CDN patch 版本(4.x.x.x.x)
+      # 1) 偵測目前 PoE2 的 CDN patch 版本(早期 4.x.x.x,現在 0.x.x.x)
       - name: 偵測 PoE2 patch 版本
         id: patch
         run: echo "version=$(node tools/data-export/get-patch.mjs)" >> "$GITHUB_OUTPUT"

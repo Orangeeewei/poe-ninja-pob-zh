@@ -1,5 +1,5 @@
 /**
- * get-patch.mjs — 問 GGG patch 伺服器目前 PoE2 的 CDN patch 版本(4.x.x.x.x)
+ * get-patch.mjs — 問 GGG patch 伺服器目前 PoE2 的 CDN patch 版本(早期 4.x.x.x,現在 0.x.x.x)
  * 預設只印出版本字串(給 CI 擷取)。加 --verbose 看細節。
  */
 import net from 'node:net';
