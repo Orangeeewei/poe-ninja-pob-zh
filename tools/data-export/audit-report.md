@@ -1,13 +1,13 @@
 # 官方繁中欄位對接稽核
 
-patch:0.5.5.5
+patch:0.5.5.7
 
 由 CI 每日自動產生(`audit-coverage.mjs --out`)。「未對接」= 該欄有官方繁中但 `relevance.mjs` 尚未路由;
 若某欄的內容 poe.ninja 會顯示,把它加進 `relevance.mjs` 的 ROUTED 即可,下次 build 自動納入。
 
 ```
 
-=== 有官方繁中的 string 欄:251 個(curated 34 / 未對接 217) ===
+=== 有官方繁中的 string 欄:252 個(curated 34 / 未對接 218) ===
 
 --- 未對接、且以「句子」為主(最該納入 descriptions,exact-match 安全)---
 24635 譯 | 句22003 名 989 短1643 | NPCTextAudio.Text
@@ -19,16 +19,16 @@ patch:0.5.5.5
  9236 譯 | 句9027 名  94 短 115 | NPCTalkDialogueTextAudio.Text
         e.g. You know why I did it—to save our people. → 你知道我為什麼要這麼做──為了拯救我們的族人。
         e.g. You think I don't know that? → 你以為我不知道？
- 8178 譯 | 句7572 名 515 短  91 | MtxTypes.Name
+ 8315 譯 | 句7696 名 527 短  92 | MtxTypes.Name
         e.g. Pet Upgrade Scroll → 寵物升級卷軸
         e.g. Pet Convert to Normal Scroll → 寵物轉化卷軸
- 7948 譯 | 句7947 名   0 短   1 | MtxTypes.Description1
+ 8079 譯 | 句8078 名   0 短   1 | MtxTypes.Description1
         e.g. Can be used with an Upgradeable Pet → 可以用於可升級的寵物
         e.g. Can be used with an Upgradeable Pet → 可以用於可升級的寵物
- 5395 譯 | 句3429 名1957 短   9 | MtxTypes.Type
+ 5460 譯 | 句3473 名1978 短   9 | MtxTypes.Type
         e.g. Weapon Effect → 武器特效
         e.g. Weapon Modifier → 武器效果
- 2762 譯 | 句1983 名 183 短 596 | MonsterVarieties.Name
+ 2763 譯 | 句1983 名 183 短 597 | MonsterVarieties.Name
         e.g. ANY MONSTER → 任意怪物
         e.g. Feral Primate → 野性靈長類
  2156 譯 | 句1345 名 273 短 538 | NPCTalk.DialogueOption
@@ -43,13 +43,13 @@ patch:0.5.5.5
  1406 譯 | 句1399 名   7 短   0 | QuestStates.MapPinsText
         e.g. Take Renly's reward → 領取倫利的獎勵
         e.g. Talk to the Blacksmith → 和鐵匠交談
-  965 譯 | 句 534 名  54 短 377 | NPCs.Name
+  966 譯 | 句 535 名  54 短 377 | NPCs.Name
         e.g. Oba → 歐霸
         e.g. Krillson, Master Fisherman → 釣魚大師克里爾森
-  817 譯 | 句 676 名  65 短  76 | ClientStrings2.Text
+  818 譯 | 句 677 名  65 短  76 | ClientStrings2.Text
         e.g. Monster level: <magic>{{{0}}} → 怪物等級：<magic>{{{0}}}
         e.g. Corruption → 已汙染
-  704 譯 | 句 701 名   1 短   2 | BackendErrors.Text
+  710 譯 | 句 707 名   1 短   2 | BackendErrors.Text
         e.g. An account with this name already exists. → 此帳號已經存在。
         e.g. Account name must be at least 3 characters in length and is restricted to the characters a
   554 譯 | 句 386 名  89 短  79 | MapPins.Name
@@ -115,18 +115,18 @@ patch:0.5.5.5
    80 譯 | 句  80 名   0 短   0 | DelveCraftingModifierDescriptions.Description
         e.g. Item is overvalued by vendors → 物品會被商人覺得超值
         e.g. Numeric modifier values are lucky High Level modifiers are more common → 數字的值非常幸運 高階詞綴更常見
-   69 譯 | 句  59 名   2 短   8 | EndgameMapContent.Name
+   72 譯 | 句  59 名   3 短  10 | EndgameMapContent.Name
         e.g. Powerful Map Boss → 強大地圖頭目
         e.g. Breach → 裂痕
+   71 譯 | 句  71 名   0 短   0 | EndgameMapContent.Description
+        e.g. Area contains a Powerful Map Boss → 區域含有一個強大地圖頭目
+        e.g. Area contains an Otherworldly Breach → 區域含有一個異界的裂痕
    69 譯 | 句  69 名   0 短   0 | HarvestCraftOptions.Text
         e.g. <white>{Reforge} a Rare item with random modifiers, including a <craftingfire>{Fire} modif
         e.g. <white>{Reforge} a Rare item with random modifiers, including a <craftingcold>{Cold} modif
    69 譯 | 句  69 名   0 短   0 | HarvestCraftOptions.Description
         e.g. Reforge a Rare item with random modifiers, including a Fire modifier → 重鑄 1 件有隨機詞綴的稀有物品，包含
         e.g. Reforge a Rare item with random modifiers, including a Cold modifier → 重鑄 1 件有隨機詞綴的稀有物品，包含
-   68 譯 | 句  68 名   0 短   0 | EndgameMapContent.Description
-        e.g. Area contains a Powerful Map Boss → 區域含有一個強大地圖頭目
-        e.g. Area contains an Otherworldly Breach → 區域含有一個異界的裂痕
    67 譯 | 句  67 名   0 短   0 | SanctumPersistentEffects.CurseDesc
         e.g. Monsters deal 30% more Damage → 怪物造成 30% 更多傷害
         e.g. Traps deal Triple Damage → 陷阱造成三倍傷害
@@ -232,6 +232,9 @@ patch:0.5.5.5
    29 譯 | 句  25 名   4 短   0 | Expedition2Recipes.Description
         e.g. Krillson's Bay Key → 克里爾森的海灣鑰匙
         e.g. Uncut Skill Gem → 未切割的寶石
+   29 譯 | 句  26 名   2 短   1 | PassiveKeystoneList.DisplayText
+        e.g. Ancestral Bond → 先祖魂約
+        e.g. Giant's Blood → 巨人之血
    28 譯 | 句  28 名   0 短   0 | AlternatePassiveSkills.FlavourText
         e.g. Give up your flesh unto the gods, and in vulnerability find strength. → 把你的肉體獻給眾神，並在脆弱中找到力
         e.g. Burn the spirit to vitalise the flesh. → 焚燒靈魂賦予肉體生命。
@@ -432,10 +435,10 @@ patch:0.5.5.5
 
 --- 未對接、以「單字短 UI」為主(高風險,需謹慎)---
  1016 譯 | 句 354 名 107 短 555 | Chests.Name
-  864 譯 | 句 309 名  30 短 525 | NPCs.ShortName
+  865 譯 | 句 310 名  30 短 525 | NPCs.ShortName
   175 譯 | 句   7 名  12 短 156 | PassiveSkillFilterOptions.Filters
   175 譯 | 句   7 名  12 短 156 | PassiveSkillFilterOptions.Name
-  134 譯 | 句   9 名   6 短 119 | HideoutDoodadCategory.Name
+  137 譯 | 句   9 名   6 短 122 | HideoutDoodadCategory.Name
    87 譯 | 句   1 名   0 短  86 | CharacterStartStates.Description
    74 譯 | 句  32 名   2 短  40 | HeistObjectives.Client
    52 譯 | 句   0 名   0 短  52 | Commands.Command
@@ -443,9 +446,9 @@ patch:0.5.5.5
    42 譯 | 句   9 名   2 短  31 | BestiaryGenus.Name
    42 譯 | 句   5 名   6 短  31 | BestiaryGenus.Name2
    38 譯 | 句   1 名   1 短  36 | HideoutDoodadTags.Name
+   36 譯 | 句   4 名   3 短  29 | TieredMicrotransactionsVisuals.Description
    34 譯 | 句   4 名   0 短  30 | SkillGemSearchTerms.Name
    34 譯 | 句   3 名   1 短  30 | UniqueStashTypes.Name
-   33 譯 | 句   4 名   3 短  26 | TieredMicrotransactionsVisuals.Description
    29 譯 | 句   0 名   0 短  29 | Realms.ShortName
    28 譯 | 句  11 名   1 短  16 | CraftingItemClassCategories.Text
    25 譯 | 句   0 名   0 短  25 | GenericLeagueRewardTypeVisuals.Name
@@ -467,11 +470,11 @@ patch:0.5.5.5
     9 譯 | 句   1 名   1 短   7 | HeistJobs.Name
     6 譯 | 句   0 名   0 短   6 | MonsterCategories.Name
     6 譯 | 句   0 名   0 短   6 | RelicItemEffectVariations.Description
+    6 譯 | 句   0 名   0 短   6 | ShapeShiftForms.Name
     5 譯 | 句   0 名   0 短   5 | AchievementSetsDisplay.Title
     5 譯 | 句   0 名   0 短   5 | BetrayalChoices.Text
     5 譯 | 句   0 名   0 短   5 | BetrayalJobs.Text
-    5 譯 | 句   0 名   0 短   5 | BindableVirtualKeys.Id
 
 === 總計未對接句子型欄位的可譯句數合計 ===
-未對接欄位的「句子」可譯數合計約 84591
+未對接欄位的「句子」可譯數合計約 84929
 ```
