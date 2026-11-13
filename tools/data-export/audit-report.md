@@ -1,6 +1,6 @@
 # 官方繁中欄位對接稽核
 
-patch:0.5.5.8
+patch:0.5.5.9
 
 由 CI 每日自動產生(`audit-coverage.mjs --out`)。「未對接」= 該欄有官方繁中但 `relevance.mjs` 尚未路由;
 若某欄的內容 poe.ninja 會顯示,把它加進 `relevance.mjs` 的 ROUTED 即可,下次 build 自動納入。
@@ -10,40 +10,40 @@ patch:0.5.5.8
 === 有官方繁中的 string 欄:252 個(curated 34 / 未對接 218) ===
 
 --- 未對接、且以「句子」為主(最該納入 descriptions,exact-match 安全)---
-24635 譯 | 句22003 名 989 短1643 | NPCTextAudio.Text
+24931 譯 | 句22293 名 995 短1643 | NPCTextAudio.Text
         e.g. It's unwise to rush into places unknown so quickly. Let me formulate a plan, then we'll ta
         e.g. With a handful of torches, a bookshelf, perhaps a nice little reading nook, this place cou
 17750 譯 | 句15842 名1015 短 893 | CharacterTextAudio.Text
         e.g. I am a warrior, raised to honour my Ancestors, to die with a weapon in my hand and the Kar
         e.g. The dead should remember their place. → 亡者應牢記其所屬之地。
- 9236 譯 | 句9027 名  94 短 115 | NPCTalkDialogueTextAudio.Text
+ 9238 譯 | 句9029 名  94 短 115 | NPCTalkDialogueTextAudio.Text
         e.g. You know why I did it—to save our people. → 你知道我為什麼要這麼做──為了拯救我們的族人。
         e.g. You think I don't know that? → 你以為我不知道？
  8315 譯 | 句7696 名 527 短  92 | MtxTypes.Name
         e.g. Pet Upgrade Scroll → 寵物升級卷軸
         e.g. Pet Convert to Normal Scroll → 寵物轉化卷軸
- 8079 譯 | 句8078 名   0 短   1 | MtxTypes.Description1
+ 8080 譯 | 句8079 名   0 短   1 | MtxTypes.Description1
         e.g. Can be used with an Upgradeable Pet → 可以用於可升級的寵物
         e.g. Can be used with an Upgradeable Pet → 可以用於可升級的寵物
- 5460 譯 | 句3473 名1978 短   9 | MtxTypes.Type
+ 5471 譯 | 句3478 名1984 短   9 | MtxTypes.Type
         e.g. Weapon Effect → 武器特效
         e.g. Weapon Modifier → 武器效果
  2763 譯 | 句1983 名 183 短 597 | MonsterVarieties.Name
         e.g. ANY MONSTER → 任意怪物
         e.g. Feral Primate → 野性靈長類
- 2156 譯 | 句1345 名 273 短 538 | NPCTalk.DialogueOption
+ 2161 譯 | 句1348 名 274 短 539 | NPCTalk.DialogueOption
         e.g. Introduction → 介紹
         e.g. Captain Fairgraves → 費爾船長
- 1469 譯 | 句1457 名  12 短   0 | QuestStates.Message
+ 1471 譯 | 句1459 名  12 短   0 | QuestStates.Message
         e.g. Quest Complete → 任務完成
         e.g. Take Renly's reward → 領取倫利的獎勵
- 1449 譯 | 句1448 名   1 短   0 | QuestStates.Text
+ 1451 譯 | 句1450 名   1 短   0 | QuestStates.Text
         e.g. Quest Complete - You have slain the Bloated Miller and received a reward from Renly. → 任務完
         e.g. Renly has offered you a reward for slaying the Bloated Miller. Take it. → 倫利要給你擊殺浮腫米勒的獎勵，收
- 1406 譯 | 句1399 名   7 短   0 | QuestStates.MapPinsText
+ 1408 譯 | 句1401 名   7 短   0 | QuestStates.MapPinsText
         e.g. Take Renly's reward → 領取倫利的獎勵
         e.g. Talk to the Blacksmith → 和鐵匠交談
-  966 譯 | 句 535 名  54 短 377 | NPCs.Name
+  967 譯 | 句 536 名  54 短 377 | NPCs.Name
         e.g. Oba → 歐霸
         e.g. Krillson, Master Fisherman → 釣魚大師克里爾森
   818 譯 | 句 677 名  65 短  76 | ClientStrings2.Text
@@ -115,7 +115,7 @@ patch:0.5.5.8
    80 譯 | 句  80 名   0 短   0 | DelveCraftingModifierDescriptions.Description
         e.g. Item is overvalued by vendors → 物品會被商人覺得超值
         e.g. Numeric modifier values are lucky High Level modifiers are more common → 數字的值非常幸運 高階詞綴更常見
-   72 譯 | 句  59 名   3 短  10 | EndgameMapContent.Name
+   74 譯 | 句  61 名   3 短  10 | EndgameMapContent.Name
         e.g. Powerful Map Boss → 強大地圖頭目
         e.g. Breach → 裂痕
    71 譯 | 句  71 名   0 短   0 | EndgameMapContent.Description
@@ -435,7 +435,7 @@ patch:0.5.5.8
 
 --- 未對接、以「單字短 UI」為主(高風險,需謹慎)---
  1016 譯 | 句 354 名 107 短 555 | Chests.Name
-  865 譯 | 句 310 名  30 短 525 | NPCs.ShortName
+  866 譯 | 句 311 名  30 短 525 | NPCs.ShortName
   175 譯 | 句   7 名  12 短 156 | PassiveSkillFilterOptions.Filters
   175 譯 | 句   7 名  12 短 156 | PassiveSkillFilterOptions.Name
   137 譯 | 句   9 名   6 短 122 | HideoutDoodadCategory.Name
@@ -476,5 +476,5 @@ patch:0.5.5.8
     5 譯 | 句   0 名   0 短   5 | BetrayalJobs.Text
 
 === 總計未對接句子型欄位的可譯句數合計 ===
-未對接欄位的「句子」可譯數合計約 84929
+未對接欄位的「句子」可譯數合計約 85271
 ```
