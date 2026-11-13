@@ -3,7 +3,7 @@
  *
  * 產出:dist/poe-ninja-pob-zh-<version>.zip,內容物在 zip 根目錄(manifest.json 在最上層)。
  * 只含:manifest.json、background.js、translator.js、search-inject.js、data/*.json、icons/*.png。
- * 不含:tools/、.github/、README、docs、CLAUDE.md、HANDOFF、node_modules、.git…
+ * 不含:tools/、.github/、README、docs、HANDOFF、node_modules、.git…
  *
  * 自帶 ZIP 寫入器(deflate + 正斜線路徑),不依賴外部 zip/PowerShell → 跨平台、
  * 且避免 PowerShell Compress-Archive 反斜線路徑被 Chrome 商店拒收的問題。
